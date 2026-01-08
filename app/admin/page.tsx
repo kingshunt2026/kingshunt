@@ -26,12 +26,22 @@ interface Tournament {
   status: string
 }
 
+interface Coach {
+  id: string
+  name: string
+  title: string
+  bio: string
+  image: string | null
+  type: "HEAD_COACH" | "COACH" | "ASSISTANT_COACH" | "PERFORMANCE_ANALYST"
+}
+
 export default function AdminPage() {
   const { user, loading: userLoading } = useUser()
   const router = useRouter()
   const [programs, setPrograms] = useState<Program[]>([])
   const [tournaments, setTournaments] = useState<Tournament[]>([])
-  const [activeTab, setActiveTab] = useState<"programs" | "tournaments" | "members">("programs")
+  const [coaches, setCoaches] = useState<Coach[]>([])
+  const [activeTab, setActiveTab] = useState<"programs" | "tournaments" | "coaches" | "members">("programs")
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -51,9 +61,10 @@ export default function AdminPage() {
   const fetchData = async () => {
     try {
       const timestamp = Date.now()
-      const [programsRes, tournamentsRes] = await Promise.all([
+      const [programsRes, tournamentsRes, coachesRes] = await Promise.all([
         fetch(`/api/programs?t=${timestamp}`, { cache: 'no-store', next: { revalidate: 0 } }),
         fetch(`/api/tournaments?t=${timestamp}`, { cache: 'no-store', next: { revalidate: 0 } }),
+        fetch(`/api/coaches?t=${timestamp}`, { cache: 'no-store', next: { revalidate: 0 } }),
       ])
 
       if (programsRes.ok) {
@@ -64,6 +75,11 @@ export default function AdminPage() {
       if (tournamentsRes.ok) {
         const tournamentsData = await tournamentsRes.json()
         setTournaments(tournamentsData)
+      }
+
+      if (coachesRes.ok) {
+        const coachesData = await coachesRes.json()
+        setCoaches(coachesData)
       }
     } catch (error) {
       console.error("Error fetching data:", error)
@@ -104,6 +120,33 @@ export default function AdminPage() {
     } catch (error) {
       alert("Turnuva silinirken bir hata oluştu")
     }
+  }
+
+  const handleDeleteCoach = async (id: string) => {
+    if (!confirm("Bu koçu silmek istediğinize emin misiniz?")) return
+
+    try {
+      const response = await fetch(`/api/coaches/${id}`, {
+        method: "DELETE",
+        cache: 'no-store',
+      })
+
+      if (response.ok) {
+        fetchData()
+      }
+    } catch (error) {
+      alert("Koç silinirken bir hata oluştu")
+    }
+  }
+
+  const getCoachTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      HEAD_COACH: "Baş Antrenör",
+      COACH: "Antrenör",
+      ASSISTANT_COACH: "Yardımcı Antrenör",
+      PERFORMANCE_ANALYST: "Performans Analisti",
+    }
+    return labels[type] || type
   }
 
   if (userLoading || loading) {
@@ -155,6 +198,16 @@ export default function AdminPage() {
             }`}
           >
             Turnuvalar
+          </button>
+          <button
+            onClick={() => setActiveTab("coaches")}
+            className={`px-4 py-2 text-sm font-semibold transition ${
+              activeTab === "coaches"
+                ? "border-b-2 border-gold-500 text-gold-600"
+                : "text-[#4a4a4a] hover:text-[#0b0b0b]"
+            }`}
+          >
+            Koçlar
           </button>
         </div>
 
@@ -280,6 +333,61 @@ export default function AdminPage() {
                       </Link>
                       <button
                         onClick={() => handleDeleteTournament(tournament.id)}
+                        className="rounded-lg border border-red-400/50 bg-red-500/15 px-3 py-1.5 text-xs font-semibold text-red-800 transition hover:bg-red-500/25"
+                      >
+                        Sil
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === "coaches" && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-[#0b0b0b]">Koçlar</h2>
+              <Link
+                href="/admin/coaches/new"
+                className="rounded-full bg-gradient-to-r from-gold-400 to-amber-500 px-4 py-2 text-sm font-semibold text-black shadow-lg shadow-gold-500/25 transition hover:-translate-y-0.5 hover:shadow-gold-400/40"
+              >
+                Yeni Koç
+              </Link>
+            </div>
+
+            <div className="grid gap-4">
+              {coaches.map((coach) => (
+                <div
+                  key={coach.id}
+                  className="rounded-2xl border border-[#0b0b0b]/6 bg-white p-6 shadow-lg shadow-black/10"
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-lg font-semibold text-[#0b0b0b]">
+                          {coach.name}
+                        </h3>
+                        <span className="rounded-full border border-gold-400/50 bg-gold-500/15 px-2 py-0.5 text-xs font-semibold text-gold-800">
+                          {getCoachTypeLabel(coach.type)}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gold-700 mb-2">{coach.title}</p>
+                      <p className="text-sm text-[#4a4a4a] line-clamp-2">{coach.bio}</p>
+                      {coach.image && (
+                        <p className="text-xs text-[#4a4a4a] mt-2">Resim: {coach.image.substring(0, 50)}...</p>
+                      )}
+                    </div>
+                    <div className="flex gap-2 ml-4">
+                      <Link
+                        href={`/admin/coaches/${coach.id}`}
+                        className="rounded-lg border border-gold-400/50 bg-gold-500/15 px-3 py-1.5 text-xs font-semibold text-gold-800 transition hover:bg-gold-500/25"
+                      >
+                        Düzenle
+                      </Link>
+                      <button
+                        onClick={() => handleDeleteCoach(coach.id)}
                         className="rounded-lg border border-red-400/50 bg-red-500/15 px-3 py-1.5 text-xs font-semibold text-red-800 transition hover:bg-red-500/25"
                       >
                         Sil

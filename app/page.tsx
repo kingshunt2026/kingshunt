@@ -36,26 +36,26 @@ const events = [
   { name: "Spring Rapid", type: "Online", date: "19 Mart 2026" },
 ];
 
-const coaches = [
-  {
-    name: "Ece Kurtuluş",
-    title: "FIDE Trainer",
-    bio: "Milli takım kamplarında görev almış, taktik keskinliğiyle bilinir.",
-  },
-  {
-    name: "Mert Aksoy",
-    title: "Kulüp Koçu",
-    bio: "Disiplinli açılış hazırlığı ve oyun sonu düzeni üzerine uzman.",
-  },
-  {
-    name: "Deniz Şen",
-    title: "Performans Analisti",
-    bio: "Maç verisi okuma ve psikolojik hazırlıkta oyunculara destek olur.",
-  },
-];
+async function getCoaches() {
+  try {
+    const { prisma } = await import("@/lib/prisma");
+    // @ts-ignore - Prisma client will be generated
+    const coaches = await prisma.coach.findMany({
+      orderBy: [
+        { type: "asc" }, // HEAD_COACH first
+        { createdAt: "desc" },
+      ],
+    });
+    return coaches;
+  } catch (error) {
+    console.error("Error fetching coaches:", error);
+    return [];
+  }
+}
 
 export default async function Home() {
   const programs = await getPrograms();
+  const coaches = await getCoaches();
   
   return (
     <div className="text-[#0b0b0b]">
@@ -393,26 +393,43 @@ export default async function Home() {
               title="Koçlarımız"
               subtitle="FIDE sertifikalı eğitmenler ve yarışma deneyimi yüksek analistler."
             />
-            <div className="grid gap-6 md:grid-cols-3">
-              {coaches.map((coach) => (
-                <div
-                  key={coach.name}
-                  className="rounded-2xl border border-[#0b0b0b]/6 bg-white p-6 shadow-lg shadow-black/10"
-                >
-                  <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-gold-400 to-gold-600 text-black text-xl font-semibold">
-                    {coach.name
-                      .split(" ")
-                      .map((part) => part[0])
-                      .join("")}
+            {coaches.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-[#4a4a4a]">Henüz koç eklenmemiş.</p>
+              </div>
+            ) : (
+              <div className="grid gap-6 md:grid-cols-3">
+                {coaches.map((coach: any) => (
+                  <div
+                    key={coach.id}
+                    className="rounded-2xl border border-[#0b0b0b]/6 bg-white p-6 shadow-lg shadow-black/10"
+                  >
+                    {coach.image ? (
+                      <div className="mb-4 relative h-20 w-20 rounded-full overflow-hidden border-2 border-gold-400/30">
+                        <Image
+                          src={coach.image}
+                          alt={coach.name}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-gold-400 to-gold-600 text-black text-xl font-semibold">
+                        {coach.name
+                          .split(" ")
+                          .map((part: string) => part[0])
+                          .join("")}
+                      </div>
+                    )}
+                    <p className="text-lg font-semibold text-[#0b0b0b]">
+                      {coach.name}
+                    </p>
+                    <p className="text-sm text-gold-700">{coach.title}</p>
+                    <p className="mt-3 text-sm text-[#4a4a4a] line-clamp-3">{coach.bio}</p>
                   </div>
-                  <p className="text-lg font-semibold text-[#0b0b0b]">
-                    {coach.name}
-                  </p>
-                  <p className="text-sm text-gold-700">{coach.title}</p>
-                  <p className="mt-3 text-sm text-[#4a4a4a]">{coach.bio}</p>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </section>

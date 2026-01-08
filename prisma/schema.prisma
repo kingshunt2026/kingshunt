@@ -18,6 +18,13 @@ enum UserRole {
   MEMBER
 }
 
+enum CoachType {
+  HEAD_COACH
+  COACH
+  ASSISTANT_COACH
+  PERFORMANCE_ANALYST
+}
+
 model User {
   id        String   @id // Supabase Auth user ID
   email     String   @unique
@@ -67,4 +74,17 @@ model Enrollment {
   @@unique([userId, programId])
   @@index([userId])
   @@index([programId])
+}
+
+model Coach {
+  id        String    @id @default(cuid())
+  name      String
+  title     String
+  bio       String    @db.Text
+  image     String?
+  type      CoachType @default(COACH)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([type])
 }

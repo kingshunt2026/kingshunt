@@ -19,28 +19,29 @@ const pillars = [
  export default function AboutPage() {
   return (
     <div className="text-[#0b0b0b]">
-      <section className="relative overflow-hidden border-b border-[#0b0b0b]/5 bg-gradient-to-b from-white via-[#f4ecde] to-[#f7f4ec]">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(201,162,77,0.14),transparent_30%)]" />
-        <div className="mx-auto max-w-6xl px-4 py-16 md:px-6 md:py-20">
-          <SectionHeading
-            align="center"
-            eyebrow="Hakkında"
-            title="Online Satranç Okulu «Şah Avı»"
-            subtitle="Çocuklar ve yetişkinler için profesyonel dersler. Turnuva hazırlığı, stratejik ve analitik düşünme gelişimi, psikolojik destek."
-          />
-        </div>
-      </section>
 
-      <section className="mx-auto max-w-6xl px-4 py-16 md:px-6 md:py-24">
-        <div className="mb-12">
-          <div className="relative aspect-[16/9] overflow-hidden rounded-3xl border border-[#0b0b0b]/5 bg-white shadow-xl shadow-black/10">
+
+      <section className="mx-auto max-w-6xl px-4 py-16 md:px-6 md:py-12">
+        <div className="mx-auto max-w-4xl mb-12 flex flex-col md:flex-row items-center gap-8 bg-[#fffdef] p-6 md:p-10 rounded-2xl shadow-lg shadow-black/5 border border-[#deb768]/10">
+          <div className="flex-shrink-0">
             <Image
-              src="https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=1200&q=80"
-              alt="Satranç öğrencileri"
-              fill
-              className="object-cover"
+              src="/teymur-basirov.jpg"
+              alt="Teymur Başirov Rafikoviç"
+              width={120}
+              height={120}
+              className="rounded-full border-4 border-gold-300 shadow-lg shadow-black/10 bg-white"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+          </div>
+          <div>
+            <h2 className="text-xl md:text-2xl font-bold text-[#0b0b0b] mb-2">
+              FM Teymur Başirov Rafikoviç
+            </h2>
+            <div className="text-gold-800 font-semibold mb-3">
+              FIDE Ustası, Şah Avı Akademi Kurucusu ve Baş Antrenörü
+            </div>
+            <p className="text-[#4a4a4a] text-base leading-relaxed">
+              Teymur 10 yıldan fazla satranç antrenörü olarak çalışıyor, farklı seviyelerde hazırlık yapan çocukları ve yetişkinleri eğitiyor. Onun rehberliğinde öğrenciler ulusal şampiyonalara, Avrupa ve dünya şampiyonlarına katıldı. Çalışmada sadece teknik ve açılış, orta oyun ve oyun sonu bilgilerine değil, aynı zamanda mantıksal, stratejik ve analitik düşünme gelişimine de vurgu yapıyor.
+            </p>
           </div>
         </div>
         <div className="grid gap-6 md:grid-cols-3">
