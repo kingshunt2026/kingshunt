@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { useSession, signOut } from "next-auth/react";
 
  const navLinks = [
    { href: "/", label: "Anasayfa" },
@@ -20,6 +21,7 @@ const linkBase =
  export function Navbar() {
    const pathname = usePathname();
    const [open, setOpen] = useState(false);
+   const { data: session } = useSession();
 
    return (
     <header className="sticky top-0 z-40 border-b border-black/5 bg-white/90 backdrop-blur-md shadow-sm shadow-black/5">
@@ -67,12 +69,37 @@ const linkBase =
               </Link>
             );
           })}
-          <Link
-            href="/contact"
-            className="rounded-full bg-gradient-to-r from-gold-400 to-amber-500 px-4 py-2 text-sm font-semibold text-black shadow-lg shadow-gold-500/25 transition hover:-translate-y-0.5 hover:shadow-gold-400/40"
-          >
-            Üye Ol
-          </Link>
+          {session ? (
+            <>
+              <Link
+                href="/profile"
+                className="rounded-full border border-gold-400/50 bg-gold-500/15 px-4 py-2 text-sm font-semibold text-gold-800 transition hover:bg-gold-500/25"
+              >
+                Profil
+              </Link>
+              {session.user.role === "ADMIN" && (
+                <Link
+                  href="/admin"
+                  className="rounded-full border border-[#0b0b0b]/10 bg-[#f7f4ec] px-4 py-2 text-sm font-semibold text-[#0b0b0b] transition hover:bg-[#efe7d7]"
+                >
+                  Admin
+                </Link>
+              )}
+              <button
+                onClick={() => signOut()}
+                className="rounded-full border border-[#0b0b0b]/10 bg-white px-4 py-2 text-sm font-semibold text-[#0b0b0b] transition hover:bg-[#f7f4ec]"
+              >
+                Çıkış
+              </button>
+            </>
+          ) : (
+            <Link
+              href="/auth/login"
+              className="rounded-full bg-gradient-to-r from-gold-400 to-amber-500 px-4 py-2 text-sm font-semibold text-black shadow-lg shadow-gold-500/25 transition hover:-translate-y-0.5 hover:shadow-gold-400/40"
+            >
+              Giriş Yap
+            </Link>
+          )}
         </nav>
 
         <button
@@ -146,13 +173,43 @@ const linkBase =
                   >
                     Programlar
                   </Link>
+            {session ? (
+              <>
+                <Link
+                  href="/profile"
+                  className="rounded-full border border-gold-400/50 bg-gold-500/15 px-4 py-2 text-sm font-semibold text-gold-800 transition hover:bg-gold-500/25"
+                  onClick={() => setOpen(false)}
+                >
+                  Profil
+                </Link>
+                {session.user.role === "ADMIN" && (
                   <Link
-                    href="/contact"
-                    className="rounded-full bg-gradient-to-r from-gold-400 to-amber-500 px-4 py-2 text-sm font-semibold text-black shadow-lg shadow-gold-500/25 transition hover:-translate-y-0.5 hover:shadow-gold-400/40"
+                    href="/admin"
+                    className="rounded-full border border-[#0b0b0b]/10 bg-[#f7f4ec] px-4 py-2 text-sm font-semibold text-[#0b0b0b] transition hover:bg-[#efe7d7]"
                     onClick={() => setOpen(false)}
                   >
-                    Üye Ol
+                    Admin
                   </Link>
+                )}
+                <button
+                  onClick={() => {
+                    signOut()
+                    setOpen(false)
+                  }}
+                  className="rounded-full border border-[#0b0b0b]/10 bg-white px-4 py-2 text-sm font-semibold text-[#0b0b0b] transition hover:bg-[#f7f4ec]"
+                >
+                  Çıkış
+                </button>
+              </>
+            ) : (
+              <Link
+                href="/auth/login"
+                className="rounded-full bg-gradient-to-r from-gold-400 to-amber-500 px-4 py-2 text-sm font-semibold text-black shadow-lg shadow-gold-500/25 transition hover:-translate-y-0.5 hover:shadow-gold-400/40"
+                onClick={() => setOpen(false)}
+              >
+                Giriş Yap
+              </Link>
+            )}
                 </div>
               </div>
             </div>

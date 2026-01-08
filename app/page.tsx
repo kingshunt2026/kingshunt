@@ -2,23 +2,29 @@ import Link from "next/link";
 import Image from "next/image";
 import { SectionHeading } from "@/components/section-heading";
 
-const programs = [
-  {
-    title: "Yeni Başlayanlar",
-    description:
-      "Sıfırdan güvenli oyuna kadar. Kurallar ve temel oyun sonları, basit mat yapıları, açılış temelleri ve merkez kontrolü, ilk taktik motifler.",
-  },
-  {
-    title: "Orta Seviye",
-    description:
-      "Güçlenme ve reyting artışı. Öğrencinin stilini göz önünde bulundurarak açılış repertuvarı, orta oyunda tipik pozisyonlar ve planlar, derin taktik ve kombinasyonlar, kendi oyunlarının analizi.",
-  },
-  {
-    title: "Turnuvalar",
-    description:
-      "Ciddi hazırlık. Rakip oyunlarının analizi, derin açılış çalışmaları, karmaşık oyun sonları, yarışmalara psikolojik hazırlık.",
-  },
-];
+interface Program {
+  id: string;
+  title: string;
+  description: string;
+  level: string | null;
+  duration: string | null;
+  price: string | null;
+  structure: string[];
+  goals: string[];
+}
+
+async function getPrograms(): Promise<Program[]> {
+  try {
+    const { prisma } = await import("@/lib/prisma");
+    const programs = await prisma.program.findMany({
+      orderBy: { createdAt: "desc" },
+    });
+    return programs;
+  } catch (error) {
+    console.error("Error fetching programs:", error);
+    return [];
+  }
+}
 
 const events = [
   { name: "Golden King Blitz", type: "Online", date: "15 Şubat 2026" },
@@ -44,7 +50,9 @@ const coaches = [
   },
 ];
 
-export default function Home() {
+export default async function Home() {
+  const programs = await getPrograms();
+  
   return (
     <div className="text-[#0b0b0b]">
       {/* Hero */}
@@ -220,31 +228,120 @@ export default function Home() {
               title="Eğitim Programları"
               subtitle="Yaşa ve hedefe göre yapılandırılmış, uygulanabilir haftalık planlar."
             />
-            <div className="grid gap-6 md:grid-cols-3">
-              {programs.map((program) => (
-                <div
-                  key={program.title}
-                  className="group rounded-2xl border border-[#0b0b0b]/5 bg-gradient-to-br from-white to-[#f7f2e7] p-6 shadow-lg shadow-black/10 transition hover:-translate-y-1 hover:border-gold-400/60"
-                >
-                  <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gold-500/15 text-gold-600 ring-1 ring-inset ring-gold-400/40">
-                    <span className="text-lg">♟︎</span>
-                  </div>
-                  <h3 className="text-lg font-semibold text-[#0b0b0b]">
-                    {program.title}
-                  </h3>
-                  <p className="mt-3 text-sm text-[#4a4a4a]">
-                    {program.description}
-                  </p>
-                  <Link
-                    href="/programs"
-                    className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-gold-700 transition hover:text-gold-600"
-                  >
-                    Programı Gör
-                    <span aria-hidden>→</span>
-                  </Link>
-                </div>
-              ))}
-            </div>
+            {programs.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-[#4a4a4a]">Henüz program eklenmemiş.</p>
+              </div>
+            ) : (
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {programs.map((program, index) => {
+                  // Default images for programs
+                  const defaultImages = [
+                    "https://images.unsplash.com/photo-1586165368502-1bad197e6461?w=600&q=80",
+                    "https://images.unsplash.com/photo-1528819622765-d6bcf132ac31?w=600&q=80",
+                    "https://images.unsplash.com/photo-1529699211952-734e80c4d42b?w=600&q=80",
+                    "https://images.unsplash.com/photo-1606166188511-aa0b3c2c6279?w=600&q=80",
+                  ];
+                  const imageUrl = defaultImages[index % defaultImages.length];
+                  
+                  return (
+                    <div
+                      key={program.id}
+                      className="group relative overflow-hidden rounded-3xl border border-[#0b0b0b]/5 bg-white shadow-xl shadow-black/10 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl hover:shadow-gold-500/20 hover:border-gold-400/60"
+                    >
+                      {/* Image Section */}
+                      <div className="relative h-48 overflow-hidden">
+                        <Image
+                          src={imageUrl}
+                          alt={program.title}
+                          fill
+                          className="object-cover transition-transform duration-500 group-hover:scale-110"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+                        <div className="absolute inset-0 bg-gradient-to-br from-gold-500/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                        
+                        {/* Level Badge on Image */}
+                        {program.level && (
+                          <div className="absolute top-4 right-4">
+                            <span className="inline-flex items-center rounded-full bg-gold-500/95 backdrop-blur-sm px-3 py-1 text-xs font-bold text-white shadow-lg border border-gold-300/50">
+                              {program.level}
+                            </span>
+                          </div>
+                        )}
+                        
+                        {/* Chess Icon Overlay */}
+                        <div className="absolute bottom-4 left-4">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gold-500/20 backdrop-blur-sm text-gold-300 ring-2 ring-gold-400/50 shadow-lg">
+                            <span className="text-2xl">♟︎</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Content Section */}
+                      <div className="p-6">
+                        <h3 className="text-xl font-bold text-[#0b0b0b] mb-2 group-hover:text-gold-600 transition-colors">
+                          {program.title}
+                        </h3>
+                        <p className="text-sm text-[#4a4a4a] line-clamp-3 mb-4">
+                          {program.description}
+                        </p>
+
+                        {/* Info Badges */}
+                        <div className="flex flex-wrap gap-2 mb-4">
+                          {program.duration && (
+                            <span className="inline-flex items-center gap-1 rounded-lg bg-gold-50 px-2.5 py-1 text-xs font-medium text-gold-700 border border-gold-200">
+                              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              {program.duration}
+                            </span>
+                          )}
+                          {program.price && (
+                            <span className="inline-flex items-center gap-1 rounded-lg bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 border border-amber-200">
+                              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              {program.price}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Structure - All Items */}
+                        {program.structure && program.structure.length > 0 && (
+                          <div className="mb-4 pb-4 border-b border-[#0b0b0b]/10">
+                            <p className="text-xs font-semibold text-gold-600 mb-2 uppercase tracking-wide">
+                              Program Yapısı
+                            </p>
+                            <ul className="space-y-1.5">
+                              {program.structure.map((item, idx) => (
+                                <li key={idx} className="flex items-start gap-2 text-xs text-[#4a4a4a]">
+                                  <span className="mt-1 h-1.5 w-1.5 rounded-full bg-gold-500 flex-shrink-0" />
+                                  <span>{item}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* CTA Button */}
+                        <Link
+                          href="/programs"
+                          className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-gold-400 to-amber-500 px-4 py-3 text-sm font-bold text-black shadow-lg shadow-gold-500/25 transition-all duration-300 hover:shadow-gold-400/40 hover:scale-105 group-hover:from-gold-500 group-hover:to-amber-600"
+                        >
+                          Detayları Gör
+                          <svg className="h-4 w-4 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                          </svg>
+                        </Link>
+                      </div>
+
+                      {/* Decorative Corner Element */}
+                      <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-gold-400/10 to-transparent rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       </section>
