@@ -102,6 +102,7 @@ const linkBase =
           )}
         </nav>
 
+
         <button
           type="button"
           className="flex items-center gap-2 rounded-full border border-black/10 bg-white/90 px-4 py-2 text-sm font-semibold text-[#0b0b0b] shadow-sm shadow-black/5 transition hover:-translate-y-0.5 hover:border-gold-400 hover:shadow-gold-200/50 md:hidden"
