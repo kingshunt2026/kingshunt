@@ -12,6 +12,7 @@ const navLinks = [
   { href: "/programs", label: "Programlar" },
   { href: "/tournaments", label: "Turnuvalar" },
   { href: "/coaches", label: "Antrenörler" },
+  { href: "/ukd-hesaplama", label: "UKD" },
   { href: "/contact", label: "İletişim" },
 ];
 
@@ -26,12 +27,12 @@ export function Navbar() {
   return (
    <header className="sticky top-0 z-40 border-b border-black/5 bg-white/90 backdrop-blur-md shadow-sm shadow-black/5">
      <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-transparent via-gold-400/70 to-transparent" />
-     <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 md:px-6">
+     <div className="mx-auto flex max-w-7xl items-center justify-between px-3 py-3 md:px-4 lg:px-6">
        <Link
          href="/"
-         className="group flex items-center gap-3 text-lg font-semibold text-[#0b0b0b]"
+         className="group flex items-center gap-2.5 text-lg font-semibold text-[#0b0b0b] flex-shrink-0"
        >
-         <div className="relative h-12 w-12 flex-shrink-0 transition-transform group-hover:-translate-y-0.5 bg-transparent">
+         <div className="relative h-10 w-10 md:h-12 md:w-12 flex-shrink-0 transition-transform group-hover:-translate-y-0.5 bg-transparent">
            <Image
              src="/images/logo3.png"
              alt="Şah Avı Akademi Logo"
@@ -41,66 +42,70 @@ export function Navbar() {
            />
          </div>
          <div className="leading-tight hidden sm:block">
-           <p className="text-sm uppercase tracking-[0.2em] text-gold-300">
+           <p className="text-xs md:text-sm uppercase tracking-[0.2em] text-gold-300">
              Şah Avı
            </p>
-           <p className="text-base font-semibold text-[#0b0b0b]">Akademi</p>
+           <p className="text-sm md:text-base font-semibold text-[#0b0b0b]">Akademi</p>
          </div>
        </Link>
 
-       <nav className="relative hidden items-center gap-8 md:flex">
-         <div className="pointer-events-none absolute inset-y-0 -left-4 -right-4 -z-10 rounded-full bg-gradient-to-r from-amber-200/60 via-white to-amber-100/40 blur-xl transition duration-300" />
-         {navLinks.map((link) => {
-           const isActive =
-             link.href === "/"
-               ? pathname === link.href
-               : pathname?.startsWith(link.href);
-           return (
-             <Link
-               key={link.href}
-               href={link.href}
-               className={`${linkBase} ${
-                 isActive
-                   ? "text-gold-600 after:scale-x-100"
-                   : "text-[#0b0b0b]/70"
-               }`}
-             >
-               {link.label}
-             </Link>
-           );
-         })}
-         {user ? (
-           <>
-             <Link
-               href="/profile"
-               className="rounded-full border border-gold-400/50 bg-gold-500/15 px-4 py-2 text-sm font-semibold text-gold-800 transition hover:bg-gold-500/25"
-             >
-               Profil
-             </Link>
-             {user.role === "ADMIN" && (
-               <Link
-                 href="/admin"
-                 className="rounded-full border border-[#0b0b0b]/10 bg-[#f7f4ec] px-4 py-2 text-sm font-semibold text-[#0b0b0b] transition hover:bg-[#efe7d7]"
-               >
-                 Admin
-               </Link>
-             )}
-             <button
-               onClick={() => signOut()}
-               className="rounded-full border border-[#0b0b0b]/10 bg-white px-4 py-2 text-sm font-semibold text-[#0b0b0b] transition hover:bg-[#f7f4ec]"
-             >
-               Çıkış
-             </button>
-           </>
-         ) : (
-           <Link
-             href="/auth/login"
-             className="rounded-full bg-gradient-to-r from-gold-400 to-amber-500 px-4 py-2 text-sm font-semibold text-black shadow-lg shadow-gold-500/25 transition hover:-translate-y-0.5 hover:shadow-gold-400/40"
-           >
-             Giriş Yap
-           </Link>
-         )}
-       </nav>
+      <nav className="relative hidden items-center gap-3 lg:gap-4 xl:gap-5 md:flex">
+        <div className="pointer-events-none absolute inset-y-0 -left-4 -right-4 -z-10 rounded-full bg-gradient-to-r from-amber-200/60 via-white to-amber-100/40 blur-xl transition duration-300" />
+        {navLinks.map((link) => {
+          const isActive =
+            link.href === "/"
+              ? pathname === link.href
+              : pathname?.startsWith(link.href);
+          return (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={`${linkBase} whitespace-nowrap ${
+                isActive
+                  ? "text-gold-600 after:scale-x-100"
+                  : "text-[#0b0b0b]/70"
+              }`}
+            >
+              {link.label}
+            </Link>
+          );
+        })}
+
+        {/* User Actions */}
+        <div className="flex items-center gap-2 ml-3 pl-3 border-l border-[#0b0b0b]/10">
+          {user ? (
+            <>
+              <Link
+                href="/profile"
+                className="rounded-lg border border-gold-400/50 bg-gold-500/15 px-3 py-1.5 text-xs font-semibold text-gold-800 transition hover:bg-gold-500/25 hover:border-gold-500/70 whitespace-nowrap"
+              >
+                Profil
+              </Link>
+              {user.role === "ADMIN" && (
+                <Link
+                  href="/admin"
+                  className="rounded-lg border-2 border-purple-500/50 bg-gradient-to-r from-purple-500/15 to-indigo-500/15 px-3 py-1.5 text-xs font-semibold text-purple-700 transition hover:from-purple-500/25 hover:to-indigo-500/25 hover:border-purple-500/70 whitespace-nowrap shadow-sm shadow-purple-500/20"
+                >
+                  ⚙️ Admin
+                </Link>
+              )}
+              <button
+                onClick={() => signOut()}
+                className="rounded-lg border border-red-400/50 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-100 hover:border-red-500/70 whitespace-nowrap"
+              >
+                Çıkış
+              </button>
+            </>
+          ) : (
+            <Link
+              href="/auth/login"
+              className="rounded-lg bg-gradient-to-r from-gold-400 to-amber-500 px-4 py-2 text-xs font-semibold text-black shadow-lg shadow-gold-500/25 transition hover:-translate-y-0.5 hover:shadow-gold-400/40 whitespace-nowrap"
+            >
+              Giriş Yap
+            </Link>
+          )}
+        </div>
+      </nav>
 
 
        <button
@@ -186,10 +191,10 @@ export function Navbar() {
                 {user.role === "ADMIN" && (
                   <Link
                     href="/admin"
-                    className="rounded-full border border-[#0b0b0b]/10 bg-[#f7f4ec] px-4 py-2 text-sm font-semibold text-[#0b0b0b] transition hover:bg-[#efe7d7]"
+                    className="rounded-lg border-2 border-purple-500/50 bg-gradient-to-r from-purple-500/15 to-indigo-500/15 px-4 py-2 text-sm font-semibold text-purple-700 transition hover:from-purple-500/25 hover:to-indigo-500/25 hover:border-purple-500/70 shadow-sm shadow-purple-500/20"
                     onClick={() => setOpen(false)}
                   >
-                    Admin
+                    ⚙️ Admin
                   </Link>
                 )}
                 <button
@@ -197,7 +202,7 @@ export function Navbar() {
                     signOut()
                     setOpen(false)
                   }}
-                  className="rounded-full border border-[#0b0b0b]/10 bg-white px-4 py-2 text-sm font-semibold text-[#0b0b0b] transition hover:bg-[#f7f4ec]"
+                  className="rounded-lg border border-red-400/50 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100 hover:border-red-500/70"
                 >
                   Çıkış
                 </button>
