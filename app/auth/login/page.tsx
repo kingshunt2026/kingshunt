@@ -28,8 +28,8 @@ export default function LoginPage() {
       if (result?.error) {
         setError("Email veya şifre hatalı")
       } else {
-        router.push("/profile")
-        router.refresh()
+        // Vercel'de daha güvenilir yönlendirme
+        window.location.href = "/profile"
       }
     } catch (err) {
       setError("Giriş yapılırken bir hata oluştu")

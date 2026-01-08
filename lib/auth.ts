@@ -68,6 +68,7 @@ export const authOptions = {
     strategy: "jwt" as const,
   },
   secret: process.env.NEXTAUTH_SECRET,
+  trustHost: true, // Vercel için gerekli - host header'ını güvenilir kabul eder
 }
 
 // NextAuth v5 beta: auth() function for server-side session
