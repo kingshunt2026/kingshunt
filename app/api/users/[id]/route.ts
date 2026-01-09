@@ -228,7 +228,7 @@ export async function PUT(
           })
 
           // Try to get existing user metadata to preserve other fields
-          let existingMetadata = {}
+          let existingMetadata: Record<string, any> = {}
           let authUserId = id // Default to the provided ID
           
           // First try to get user by ID
