@@ -158,7 +158,7 @@ export async function PUT(
     if (validatedData.startTime) updateData.startTime = validatedData.startTime
     if (validatedData.endTime) updateData.endTime = validatedData.endTime
     if (validatedData.type) updateData.type = validatedData.type
-    if (validatedData.studentNames) updateData.studentNames = validatedData.studentNames
+    if (validatedData.studentIds) updateData.studentIds = validatedData.studentIds
     if (validatedData.groupId !== undefined) updateData.groupId = validatedData.groupId || null
     if (validatedData.notes !== undefined) updateData.notes = validatedData.notes
 
