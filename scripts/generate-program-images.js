@@ -274,12 +274,7 @@ function createImage6() {
 
 // Generate all images
 const images = [
-  { name: 'program-1.png', create: createImage1 },
-  { name: 'program-2.png', create: createImage2 },
-  { name: 'program-3.png', create: createImage3 },
-  { name: 'program-4.png', create: createImage4 },
-  { name: 'program-5.png', create: createImage5 },
-  { name: 'program-6.png', create: createImage6 },
+  { name: 'kidsplaying-chess-low.jpg', create: createImage1 },
 ];
 
 console.log('Generating program images...');

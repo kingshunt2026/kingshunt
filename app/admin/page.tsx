@@ -48,11 +48,11 @@ interface Group {
   id: string
   name: string
   description: string | null
-  programId: string
+  programId: string | null
   program: {
     id: string
     title: string
-  }
+  } | null
   members: Array<{
     id: string
     user: {
@@ -523,7 +523,7 @@ export default function AdminPage() {
         {activeTab === "coaches" && (
           <div className="space-y-6">
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-[#0b0b0b]">Koçlar</h2>
+              <h2 className="text-xl font-semibold text-[#0b0b0b]">Antrenörler</h2>
               <Link
                 href="/admin/coaches/new"
                 className="rounded-full bg-gradient-to-r from-gold-400 to-amber-500 px-4 py-2 text-sm font-semibold text-black shadow-lg shadow-gold-500/25 transition hover:-translate-y-0.5 hover:shadow-gold-400/40"
@@ -885,13 +885,13 @@ export default function AdminPage() {
                           Program
                         </label>
                         <select
-                          value={editingGroup.programId}
+                          value={editingGroup.programId || ""}
                           onChange={(e) =>
-                            setEditingGroup({ ...editingGroup, programId: e.target.value })
+                            setEditingGroup({ ...editingGroup, programId: e.target.value || null })
                           }
                           className="w-full rounded-xl border border-[#0b0b0b]/10 bg-[#f7f4ec] px-4 py-2 text-sm text-[#0b0b0b] focus:border-gold-400 focus:outline-none"
                         >
-                          <option value="">Program seçin...</option>
+                          <option value="">Program seçin (opsiyonel)...</option>
                           {programs.map((program) => (
                             <option key={program.id} value={program.id}>
                               {program.title}
@@ -986,9 +986,15 @@ export default function AdminPage() {
                           <h3 className="text-lg font-semibold text-[#0b0b0b]">
                             {group.name}
                           </h3>
-                          <span className="rounded-full border border-blue-400/50 bg-blue-500/15 px-2 py-0.5 text-xs font-semibold text-blue-800">
-                            {group.program.title}
-                          </span>
+                          {group.program ? (
+                            <span className="rounded-full border border-blue-400/50 bg-blue-500/15 px-2 py-0.5 text-xs font-semibold text-blue-800">
+                              {group.program.title}
+                            </span>
+                          ) : (
+                            <span className="rounded-full border border-gray-400/50 bg-gray-500/15 px-2 py-0.5 text-xs font-semibold text-gray-600">
+                              Program yok
+                            </span>
+                          )}
                         </div>
                         {group.description && (
                           <p className="text-sm text-[#4a4a4a] mb-2">{group.description}</p>
@@ -1107,17 +1113,16 @@ export default function AdminPage() {
 
                       <div>
                         <label className="block text-sm font-medium text-[#0b0b0b] mb-2">
-                          Program *
+                          Program
                         </label>
                         <select
                           value={newGroupData.programId}
                           onChange={(e) =>
-                            setNewGroupData({ ...newGroupData, programId: e.target.value })
+                            setNewGroupData({ ...newGroupData, programId: e.target.value || null })
                           }
-                          required
                           className="w-full rounded-xl border border-[#0b0b0b]/10 bg-[#f7f4ec] px-4 py-2 text-sm text-[#0b0b0b] focus:border-gold-400 focus:outline-none"
                         >
-                          <option value="">Program seçin...</option>
+                          <option value="">Program seçin (opsiyonel)...</option>
                           {programs.map((program) => (
                             <option key={program.id} value={program.id}>
                               {program.title}
@@ -1167,8 +1172,8 @@ export default function AdminPage() {
                       <div className="flex gap-4 pt-4">
                         <button
                           onClick={async () => {
-                            if (!newGroupData.name || !newGroupData.programId) {
-                              alert("Grup adı ve program seçimi gereklidir")
+                            if (!newGroupData.name) {
+                              alert("Grup adı gereklidir")
                               return
                             }
 
@@ -1176,7 +1181,10 @@ export default function AdminPage() {
                               const response = await fetch("/api/groups", {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify(newGroupData),
+                                body: JSON.stringify({
+                                  ...newGroupData,
+                                  programId: newGroupData.programId || null,
+                                }),
                                 cache: 'no-store',
                               })
 

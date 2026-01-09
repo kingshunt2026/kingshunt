@@ -178,7 +178,7 @@ export default function EditProgramPage() {
                 value={formData.imageUrl}
                 onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
                 className="w-full rounded-xl border border-[#0b0b0b]/10 bg-[#f7f4ec] px-4 py-3 text-sm text-[#0b0b0b] placeholder:text-[#4a4a4a]/60 focus:border-gold-400 focus:outline-none"
-                placeholder="https://example.com/image.jpg veya /images/program-1.png"
+                placeholder="https://example.com/image.jpg veya /images/kidsplaying-chess-low.jpg"
               />
               <p className="mt-1 text-xs text-[#4a4a4a]">
                 Resim URL'si girebilirsiniz. Boş bırakılırsa varsayılan resim kullanılacaktır.

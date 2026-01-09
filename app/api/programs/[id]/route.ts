@@ -9,7 +9,11 @@ const programSchema = z.object({
   level: z.string().optional(),
   duration: z.string().optional(),
   price: z.string().optional(),
-  imageUrl: z.string().url().optional().or(z.literal("")),
+  imageUrl: z.union([
+    z.string().url(),
+    z.literal(""),
+    z.null()
+  ]).optional(),
   structure: z.array(z.string()).optional(),
   goals: z.array(z.string()).optional(),
 })

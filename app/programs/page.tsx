@@ -19,12 +19,7 @@ interface Program {
 
 // Default images for programs
 const defaultImages = [
-  "/images/program-1.png",
-  "/images/program-2.png",
-  "/images/program-3.png",
-  "/images/program-4.png",
-  "/images/program-5.png",
-  "/images/program-6.png",
+  "/images/kidsplaying-chess-low.jpg",
 ];
 
 async function getPrograms(): Promise<Program[]> {

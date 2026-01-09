@@ -251,12 +251,7 @@ export default async function Home() {
                 {programs.map((program, index) => {
                   // Default images for programs (fallback)
                   const defaultImages = [
-                    "/images/program-1.png",
-                    "/images/program-2.png",
-                    "/images/program-3.png",
-                    "/images/program-4.png",
-                    "/images/program-5.png",
-                    "/images/program-6.png",
+                    "/images/kidsplaying-chess-low.jpg"
                   ];
                   // Use database imageUrl or fallback to default images
                   const imageUrl = program.imageUrl || defaultImages[index % defaultImages.length];
@@ -403,7 +398,7 @@ export default async function Home() {
           <div className="flex flex-col gap-10">
             <SectionHeading
               eyebrow="Ekip"
-              title="Koçlarımız"
+              title="Antrenörlerimiz"
               subtitle="FIDE sertifikalı eğitmenler ve yarışma deneyimi yüksek analistler."
             />
             {coaches.length === 0 ? (

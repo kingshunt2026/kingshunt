@@ -6,7 +6,7 @@ import { z } from "zod"
 const updateGroupSchema = z.object({
   name: z.string().min(1, "Grup adı gereklidir").optional(),
   description: z.string().optional().nullable(),
-  programId: z.string().min(1, "Program seçimi gereklidir").optional(),
+  programId: z.union([z.string().min(1), z.null()]).optional(),
   memberIds: z.array(z.string()).optional(),
 })
 
@@ -128,8 +128,8 @@ export async function PUT(
       )
     }
 
-    // Check if program exists (if programId is being updated)
-    if (validatedData.programId) {
+    // Check if program exists (if programId is being updated and not null)
+    if (validatedData.programId !== undefined && validatedData.programId !== null) {
       const program = await prisma.program.findUnique({
         where: { id: validatedData.programId },
       })

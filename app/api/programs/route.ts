@@ -6,10 +6,14 @@ import { z } from "zod"
 const programSchema = z.object({
   title: z.string().min(1, "Başlık gereklidir"),
   description: z.string().min(1, "Açıklama gereklidir"),
-  level: z.string().optional(),
-  duration: z.string().optional(),
-  price: z.string().optional(),
-  imageUrl: z.string().url().optional().or(z.literal("")),
+  level: z.union([z.string().min(1), z.literal(""), z.null()]).optional(),
+  duration: z.union([z.string().min(1), z.literal(""), z.null()]).optional(),
+  price: z.union([z.string().min(1), z.literal(""), z.null()]).optional(),
+  imageUrl: z.union([
+    z.string().url(),
+    z.literal(""),
+    z.null()
+  ]).optional(),
   structure: z.array(z.string()).default([]),
   goals: z.array(z.string()).default([]),
 })
@@ -70,8 +74,14 @@ export async function POST(request: NextRequest) {
 
     const program = await prisma.program.create({
       data: {
-        ...validatedData,
-        imageUrl: validatedData.imageUrl || null,
+        title: validatedData.title,
+        description: validatedData.description,
+        level: validatedData.level && validatedData.level !== "" ? validatedData.level : null,
+        duration: validatedData.duration && validatedData.duration !== "" ? validatedData.duration : null,
+        price: validatedData.price && validatedData.price !== "" ? validatedData.price : null,
+        imageUrl: validatedData.imageUrl && validatedData.imageUrl !== "" ? validatedData.imageUrl : null,
+        structure: validatedData.structure || [],
+        goals: validatedData.goals || [],
       },
     })
 

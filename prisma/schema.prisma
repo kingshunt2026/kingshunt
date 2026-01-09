@@ -127,11 +127,11 @@ model Group {
   id          String   @id @default(cuid())
   name        String
   description String?  @db.Text
-  programId   String   // Hangi programa bağlı
+  programId   String?  // Hangi programa bağlı (nullable - program silinince null olur)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  program Program        @relation(fields: [programId], references: [id], onDelete: Cascade)
+  program Program?       @relation(fields: [programId], references: [id], onDelete: SetNull)
   members GroupMember[]  // Grup üyeleri
   lessons Lesson[]       // Bu gruba ait dersler
 

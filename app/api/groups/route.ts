@@ -6,7 +6,7 @@ import { z } from "zod"
 const groupSchema = z.object({
   name: z.string().min(1, "Grup adı gereklidir"),
   description: z.string().optional().nullable(),
-  programId: z.string().min(1, "Program seçimi gereklidir"),
+  programId: z.union([z.string().min(1), z.null()]).optional(),
   memberIds: z.array(z.string()).default([]), // Öğrenci/üye ID'leri
 })
 
@@ -102,16 +102,18 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const validatedData = groupSchema.parse(body)
 
-    // Check if program exists
-    const program = await prisma.program.findUnique({
-      where: { id: validatedData.programId },
-    })
+    // Check if program exists (if programId is provided)
+    if (validatedData.programId) {
+      const program = await prisma.program.findUnique({
+        where: { id: validatedData.programId },
+      })
 
-    if (!program) {
-      return NextResponse.json(
-        { error: "Program bulunamadı" },
-        { status: 404 }
-      )
+      if (!program) {
+        return NextResponse.json(
+          { error: "Program bulunamadı" },
+          { status: 404 }
+        )
+      }
     }
 
     // Create group
@@ -119,7 +121,7 @@ export async function POST(request: NextRequest) {
       data: {
         name: validatedData.name,
         description: validatedData.description || null,
-        programId: validatedData.programId,
+        programId: validatedData.programId || null,
         members: {
           create: validatedData.memberIds.map((userId) => ({
             userId,
