@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useUser } from "@/hooks/use-user"
 
 interface Lesson {
   id: string
@@ -8,10 +9,16 @@ interface Lesson {
   startTime: string
   endTime: string
   type: "INDIVIDUAL" | "GROUP"
-  studentNames: string[]
+  studentIds: string[]
+  students?: Array<{ id: string; name: string }>
+  groupId: string | null
   isRecurring: boolean
   recurringEndDate: string | null
   notes: string | null
+  coach?: {
+    id: string
+    name: string | null
+  }
 }
 
 interface CoachCalendarProps {
@@ -19,17 +26,21 @@ interface CoachCalendarProps {
 }
 
 export function CoachCalendar({ userId }: CoachCalendarProps) {
+  const { user } = useUser()
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [currentWeek, setCurrentWeek] = useState(new Date())
+  const [usersList, setUsersList] = useState<Array<{ id: string; name: string; studentName: string | null; email: string | null }>>([])
+  const [groupsList, setGroupsList] = useState<Array<{ id: string; name: string; members: Array<{ user: { name: string | null; studentName: string | null; email: string | null } }> }>>([])
   const [formData, setFormData] = useState({
     date: "",
     startTime: "",
     endTime: "",
     type: "INDIVIDUAL" as "INDIVIDUAL" | "GROUP",
-    studentNames: [""],
+    studentIds: [] as string[],
+    selectedGroupId: "",
     isRecurring: false,
     recurringEndDate: "",
     notes: "",
@@ -37,9 +48,18 @@ export function CoachCalendar({ userId }: CoachCalendarProps) {
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null)
   const [error, setError] = useState("")
 
+  const canEdit = user?.role === "ADMIN" || user?.role === "COACH"
+  const canView = canEdit || user?.role === "MEMBER"
+
   useEffect(() => {
-    fetchLessons()
-  }, [currentWeek])
+    if (canView) {
+      fetchLessons()
+    }
+    if (canEdit) {
+      fetchUsers()
+      fetchGroups()
+    }
+  }, [currentWeek, canView, canEdit])
 
   const fetchLessons = async () => {
     try {
@@ -60,6 +80,30 @@ export function CoachCalendar({ userId }: CoachCalendarProps) {
       console.error("Error fetching lessons:", error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchUsers = async () => {
+    try {
+      const response = await fetch("/api/users", { cache: 'no-store' })
+      if (response.ok) {
+        const data = await response.json()
+        setUsersList(data.filter((u: any) => u.role === "MEMBER"))
+      }
+    } catch (error) {
+      console.error("Error fetching users:", error)
+    }
+  }
+
+  const fetchGroups = async () => {
+    try {
+      const response = await fetch("/api/groups", { cache: 'no-store' })
+      if (response.ok) {
+        const data = await response.json()
+        setGroupsList(data)
+      }
+    } catch (error) {
+      console.error("Error fetching groups:", error)
     }
   }
 
@@ -122,9 +166,24 @@ export function CoachCalendar({ userId }: CoachCalendarProps) {
     // Set time to noon to avoid timezone issues
     const dateWithTime = new Date(date)
     dateWithTime.setHours(12, 0, 0, 0)
+    
+    // Get the hour from the clicked date
+    const clickedHour = date.getHours()
+    const clickedMinute = date.getMinutes()
+    
+    // Format start time (clicked hour:minute)
+    const startTime = `${clickedHour.toString().padStart(2, '0')}:${clickedMinute.toString().padStart(2, '0')}`
+    
+    // Default end time is 1 hour later
+    const endHour = clickedHour + 1
+    const endTime = `${endHour.toString().padStart(2, '0')}:${clickedMinute.toString().padStart(2, '0')}`
+    
     setFormData({
       ...formData,
       date: dateWithTime.toISOString(),
+      startTime: startTime,
+      endTime: endTime,
+      selectedGroupId: "",
     })
     setShowForm(true)
     setEditingLesson(null)
@@ -139,8 +198,13 @@ export function CoachCalendar({ userId }: CoachCalendarProps) {
       return
     }
 
-    if (formData.studentNames.filter(n => n.trim()).length === 0) {
-      setError("En az bir öğrenci ismi gereklidir")
+    if (formData.type === "GROUP" && !formData.selectedGroupId) {
+      setError("Grup dersi için lütfen bir grup seçin")
+      return
+    }
+
+    if (formData.type === "INDIVIDUAL" && formData.studentIds.length === 0) {
+      setError("Bireysel ders için en az bir öğrenci seçilmelidir")
       return
     }
 
@@ -160,12 +224,22 @@ export function CoachCalendar({ userId }: CoachCalendarProps) {
         }
       }
 
+      // If group is selected, get member IDs from the group
+      let finalStudentIds = formData.studentIds
+      if (formData.type === "GROUP" && formData.selectedGroupId) {
+        const selectedGroup = groupsList.find(g => g.id === formData.selectedGroupId)
+        if (selectedGroup) {
+          finalStudentIds = selectedGroup.members.map(member => member.user.id)
+        }
+      }
+
       const requestBody = {
         date: formData.date || new Date().toISOString(),
         startTime: formData.startTime,
         endTime: formData.endTime,
         type: formData.type,
-        studentNames: formData.studentNames.filter(n => n.trim()),
+        studentIds: finalStudentIds,
+        groupId: formData.type === "GROUP" && formData.selectedGroupId ? formData.selectedGroupId : null,
         isRecurring: formData.isRecurring,
         recurringEndDate: recurringEndDateValue,
         notes: formData.notes || null,
@@ -186,7 +260,8 @@ export function CoachCalendar({ userId }: CoachCalendarProps) {
           startTime: "",
           endTime: "",
           type: "INDIVIDUAL",
-          studentNames: [""],
+          studentIds: [],
+          selectedGroupId: "",
           isRecurring: false,
           recurringEndDate: "",
           notes: "",
@@ -250,7 +325,8 @@ export function CoachCalendar({ userId }: CoachCalendarProps) {
       startTime: lesson.startTime,
       endTime: lesson.endTime,
       type: lesson.type,
-      studentNames: lesson.studentNames.length > 0 ? lesson.studentNames : [""],
+      studentIds: lesson.studentIds.length > 0 ? lesson.studentIds : [],
+      selectedGroupId: lesson.groupId || "",
       isRecurring: lesson.isRecurring,
       recurringEndDate: recurringEndDateValue,
       notes: lesson.notes || "",
@@ -274,24 +350,20 @@ export function CoachCalendar({ userId }: CoachCalendarProps) {
     setCurrentWeek(new Date())
   }
 
-  const addStudentField = () => {
-    setFormData({
-      ...formData,
-      studentNames: [...formData.studentNames, ""],
-    })
+  const addStudent = (userId: string) => {
+    if (!formData.studentIds.includes(userId)) {
+      setFormData({
+        ...formData,
+        studentIds: [...formData.studentIds, userId],
+      })
+    }
   }
 
-  const removeStudentField = (index: number) => {
+  const removeStudent = (userId: string) => {
     setFormData({
       ...formData,
-      studentNames: formData.studentNames.filter((_, i) => i !== index),
+      studentIds: formData.studentIds.filter(id => id !== userId),
     })
-  }
-
-  const updateStudentName = (index: number, value: string) => {
-    const newNames = [...formData.studentNames]
-    newNames[index] = value
-    setFormData({ ...formData, studentNames: newNames })
   }
 
   const monthNames = [
@@ -385,14 +457,16 @@ export function CoachCalendar({ userId }: CoachCalendarProps) {
                     <div
                       key={dayIdx}
                       onClick={() => {
-                        const clickedDate = new Date(day)
-                        clickedDate.setHours(hour, 0, 0, 0)
-                        handleDateClick(clickedDate)
+                        if (canEdit) {
+                          const clickedDate = new Date(day)
+                          clickedDate.setHours(hour, 0, 0, 0)
+                          handleDateClick(clickedDate)
+                        }
                       }}
                       className={`
-                        min-h-[50px] p-1 rounded border cursor-pointer transition relative
+                        min-h-[50px] p-1 rounded border transition relative
+                        ${canEdit ? 'cursor-pointer hover:border-gold-400 hover:bg-gold-50/50' : 'cursor-default'}
                         ${isToday ? 'border-gold-400 bg-gold-50/30' : 'border-[#0b0b0b]/5 bg-white'}
-                        hover:border-gold-400 hover:bg-gold-50/50
                         group
                       `}
                     >
@@ -418,11 +492,14 @@ export function CoachCalendar({ userId }: CoachCalendarProps) {
                             key={lesson.id}
                             onClick={(e) => {
                               e.stopPropagation()
-                              handleEdit(lesson)
+                              if (canEdit) {
+                                handleEdit(lesson)
+                              }
                             }}
                             className={`
                               absolute left-1 right-1 rounded-lg px-2 py-1.5 text-xs font-medium shadow-sm
-                              cursor-pointer z-20 transition hover:shadow-md hover:scale-[1.02]
+                              z-20 transition
+                              ${canEdit ? 'cursor-pointer hover:shadow-md hover:scale-[1.02]' : 'cursor-default'}
                               ${lesson.type === 'INDIVIDUAL' 
                                 ? 'bg-blue-500 text-white border border-blue-600' 
                                 : 'bg-purple-500 text-white border border-purple-600'
@@ -433,14 +510,26 @@ export function CoachCalendar({ userId }: CoachCalendarProps) {
                               height: `${actualHeight}px`,
                               minHeight: '40px',
                             }}
-                            title={`${lesson.startTime} - ${lesson.endTime}\nÖğrenciler: ${lesson.studentNames.join(', ')}\nTip: ${lesson.type === 'INDIVIDUAL' ? 'Bireysel' : 'Grup'}${lesson.notes ? `\nNot: ${lesson.notes}` : ''}`}
+                            title={
+                              user?.role === "MEMBER"
+                                ? `${lesson.startTime} - ${lesson.endTime}\nAntrenör: ${lesson.coach?.name || 'Bilinmiyor'}\nTip: ${lesson.type === 'INDIVIDUAL' ? 'Bireysel' : 'Grup'}${lesson.notes ? `\nNot: ${lesson.notes}` : ''}`
+                                : `${lesson.startTime} - ${lesson.endTime}\nÖğrenciler: ${lesson.students?.map(s => s.name).join(', ') || 'Yükleniyor...'}\nTip: ${lesson.type === 'INDIVIDUAL' ? 'Bireysel' : 'Grup'}${lesson.notes ? `\nNot: ${lesson.notes}` : ''}`
+                            }
                           >
                             <div className="font-bold text-[11px] mb-0.5">
                               {lesson.startTime} - {lesson.endTime}
                             </div>
                             <div className="truncate text-[10px] opacity-95 font-medium">
-                              {lesson.studentNames.slice(0, 2).join(', ')}
-                              {lesson.studentNames.length > 2 && ` +${lesson.studentNames.length - 2}`}
+                              {user?.role === "MEMBER" ? (
+                                // MEMBER için antrenör adı
+                                lesson.coach?.name || 'Antrenör'
+                              ) : (
+                                // ADMIN/COACH için öğrenci adları
+                                <>
+                                  {lesson.students?.slice(0, 2).map(s => s.name).join(', ') || 'Yükleniyor...'}
+                                  {lesson.students && lesson.students.length > 2 && ` +${lesson.students.length - 2}`}
+                                </>
+                              )}
                             </div>
                             <div className="text-[9px] opacity-80 mt-0.5">
                               {lesson.type === 'INDIVIDUAL' ? 'Bireysel' : 'Grup Dersi'}
@@ -457,28 +546,30 @@ export function CoachCalendar({ userId }: CoachCalendarProps) {
         </div>
       </div>
 
-      {/* Add Lesson Button */}
-      <button
-        onClick={() => {
-          setShowForm(true)
-          setEditingLesson(null)
-          const today = new Date()
-          today.setHours(12, 0, 0, 0)
-          setFormData({
-            date: today.toISOString(),
-            startTime: "",
-            endTime: "",
-            type: "INDIVIDUAL",
-            studentNames: [""],
-            isRecurring: false,
-            recurringEndDate: "",
-            notes: "",
-          })
-        }}
-        className="w-full rounded-lg bg-gradient-to-r from-gold-400 to-amber-500 px-5 py-3 text-sm font-semibold text-black shadow-lg shadow-gold-500/30 transition hover:-translate-y-0.5 hover:shadow-gold-400/40"
-      >
-        + Yeni Ders Ekle
-      </button>
+      {/* Add Lesson Button - Only for ADMIN and COACH */}
+      {canEdit && (
+        <button
+          onClick={() => {
+            setShowForm(true)
+            setEditingLesson(null)
+            const today = new Date()
+            today.setHours(12, 0, 0, 0)
+            setFormData({
+              date: today.toISOString(),
+              startTime: "",
+              endTime: "",
+              type: "INDIVIDUAL",
+              studentIds: [],
+              isRecurring: false,
+              recurringEndDate: "",
+              notes: "",
+            })
+          }}
+          className="w-full rounded-lg bg-gradient-to-r from-gold-400 to-amber-500 px-5 py-3 text-sm font-semibold text-black shadow-lg shadow-gold-500/30 transition hover:-translate-y-0.5 hover:shadow-gold-400/40"
+        >
+          + Yeni Ders Ekle
+        </button>
+      )}
 
       {/* Form Modal */}
       {showForm && (
@@ -534,7 +625,15 @@ export function CoachCalendar({ userId }: CoachCalendarProps) {
                     </label>
                     <select
                       value={formData.type}
-                      onChange={(e) => setFormData({ ...formData, type: e.target.value as "INDIVIDUAL" | "GROUP" })}
+                      onChange={(e) => {
+                        const newType = e.target.value as "INDIVIDUAL" | "GROUP"
+                        setFormData({ 
+                          ...formData, 
+                          type: newType,
+                          selectedGroupId: newType === "INDIVIDUAL" ? "" : formData.selectedGroupId,
+                          studentIds: newType === "INDIVIDUAL" ? formData.studentIds : []
+                        })
+                      }}
                       required
                       className="w-full rounded-xl border border-[#0b0b0b]/10 bg-[#f7f4ec] px-4 py-3 text-sm text-[#0b0b0b] focus:border-gold-400 focus:outline-none"
                     >
@@ -572,38 +671,88 @@ export function CoachCalendar({ userId }: CoachCalendarProps) {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-[#0b0b0b] mb-2">
-                    Öğrenci İsimleri *
-                  </label>
-                  {formData.studentNames.map((name, index) => (
-                    <div key={index} className="flex gap-2 mb-2">
-                      <input
-                        type="text"
-                        value={name}
-                        onChange={(e) => updateStudentName(index, e.target.value)}
-                        placeholder="Öğrenci adı"
-                        className="flex-1 rounded-xl border border-[#0b0b0b]/10 bg-[#f7f4ec] px-4 py-3 text-sm text-[#0b0b0b] focus:border-gold-400 focus:outline-none"
-                      />
-                      {formData.studentNames.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => removeStudentField(index)}
-                          className="rounded-xl border border-red-400/50 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 hover:bg-red-100"
-                        >
-                          Sil
-                        </button>
-                      )}
+                {formData.type === "GROUP" ? (
+                  <div>
+                    <label className="block text-sm font-medium text-[#0b0b0b] mb-2">
+                      Grup Seçin *
+                    </label>
+                    <select
+                      value={formData.selectedGroupId}
+                      onChange={(e) => {
+                        const selectedGroup = groupsList.find(g => g.id === e.target.value)
+                        setFormData({ 
+                          ...formData, 
+                          selectedGroupId: e.target.value,
+                          studentIds: selectedGroup 
+                            ? selectedGroup.members.map(m => m.user.id)
+                            : []
+                        })
+                      }}
+                      required
+                      className="w-full rounded-xl border border-[#0b0b0b]/10 bg-[#f7f4ec] px-4 py-3 text-sm text-[#0b0b0b] focus:border-gold-400 focus:outline-none"
+                    >
+                      <option value="">Grup seçin...</option>
+                      {groupsList.map((group) => (
+                        <option key={group.id} value={group.id}>
+                          {group.name} ({group.members.length} üye)
+                        </option>
+                      ))}
+                    </select>
+                    {formData.selectedGroupId && (
+                      <div className="mt-2 p-3 bg-gold-50 rounded-lg border border-gold-200">
+                        <p className="text-xs font-semibold text-gold-800 mb-1">Grup Üyeleri:</p>
+                        <div className="flex flex-wrap gap-1">
+                          {groupsList.find(g => g.id === formData.selectedGroupId)?.members.map((member, idx) => (
+                            <span key={idx} className="text-xs bg-white px-2 py-1 rounded border border-gold-300 text-gold-700">
+                              {member.user.studentName || member.user.name || member.user.email || "İsimsiz"}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-medium text-[#0b0b0b] mb-2">
+                      Öğrenciler *
+                    </label>
+                    <div className="space-y-2 mb-2">
+                      {formData.studentIds.map((userId) => {
+                        const user = usersList.find(u => u.id === userId)
+                        return user ? (
+                          <div key={userId} className="flex items-center justify-between rounded-xl border border-gold-200 bg-gold-50 px-4 py-2">
+                            <span className="text-sm text-gold-800">
+                              {user.studentName || user.name || user.email || "İsimsiz"}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => removeStudent(userId)}
+                              className="text-red-600 hover:text-red-800 text-sm font-semibold"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : null
+                      })}
                     </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={addStudentField}
-                    className="text-sm text-gold-600 font-medium hover:text-gold-700"
-                  >
-                    + Öğrenci Ekle
-                  </button>
-                </div>
+                    <select
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          addStudent(e.target.value)
+                          e.target.value = ""
+                        }
+                      }}
+                      className="w-full rounded-xl border border-[#0b0b0b]/10 bg-[#f7f4ec] px-4 py-3 text-sm text-[#0b0b0b] focus:border-gold-400 focus:outline-none"
+                    >
+                      <option value="">Öğrenci seçin...</option>
+                      {usersList.filter(u => !formData.studentIds.includes(u.id)).map((user) => (
+                        <option key={user.id} value={user.id}>
+                          {user.studentName || user.name || user.email || "İsimsiz"}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 <div>
                   <label className="flex items-center gap-2 mb-2">
@@ -661,7 +810,7 @@ export function CoachCalendar({ userId }: CoachCalendarProps) {
                   >
                     {editingLesson ? "Güncelle" : "Kaydet"}
                   </button>
-                  {editingLesson && (
+                  {editingLesson && canEdit && (
                     <button
                       type="button"
                       onClick={() => handleDelete(editingLesson.id)}

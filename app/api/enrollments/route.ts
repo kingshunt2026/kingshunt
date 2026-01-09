@@ -5,6 +5,7 @@ import { z } from "zod"
 
 const enrollmentSchema = z.object({
   programId: z.string().min(1, "Program ID gereklidir"),
+  userId: z.string().optional(), // Admin/Coach için başka kullanıcıyı atama
 })
 
 // Disable caching for dynamic data
@@ -80,11 +81,30 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const validatedData = enrollmentSchema.parse(body)
 
+    // Get user role from database
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { role: true }
+    })
+
+    // Determine target user ID
+    let targetUserId = user.id
+    if (validatedData.userId) {
+      // Admin or Coach can assign programs to other users
+      if (dbUser?.role !== "ADMIN" && dbUser?.role !== "COACH") {
+        return NextResponse.json(
+          { error: "Yetkisiz erişim" },
+          { status: 403 }
+        )
+      }
+      targetUserId = validatedData.userId
+    }
+
     // Check if already enrolled
     const existingEnrollment = await prisma.enrollment.findUnique({
       where: {
         userId_programId: {
-          userId: user.id,
+          userId: targetUserId,
           programId: validatedData.programId,
         }
       }
@@ -92,18 +112,25 @@ export async function POST(request: NextRequest) {
 
     if (existingEnrollment) {
       return NextResponse.json(
-        { error: "Bu programa zaten kayıtlısınız" },
+        { error: "Bu kullanıcı zaten bu programa kayıtlı" },
         { status: 400 }
       )
     }
 
     const enrollment = await prisma.enrollment.create({
       data: {
-        userId: user.id,
+        userId: targetUserId,
         programId: validatedData.programId,
       },
       include: {
         program: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          }
+        }
       }
     })
 

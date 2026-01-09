@@ -27,14 +27,23 @@ function LoginForm() {
       })
 
       if (signInError) {
-        setError("Email veya şifre hatalı")
+        // Daha detaylı hata mesajları
+        if (signInError.message.includes("Invalid login credentials")) {
+          setError("Email veya şifre hatalı. Lütfen bilgilerinizi kontrol edin.")
+        } else if (signInError.message.includes("Email not confirmed")) {
+          setError("Email adresiniz henüz onaylanmamış. Lütfen email kutunuzu kontrol edin.")
+        } else {
+          setError(signInError.message || "Giriş yapılırken bir hata oluştu")
+        }
+        console.error("Login error:", signInError)
       } else if (data.user) {
         // Callback URL varsa oraya, yoksa profile'a yönlendir
         const callbackUrl = searchParams.get("callbackUrl") || "/profile"
         window.location.href = callbackUrl
       }
     } catch (err) {
-      setError("Giriş yapılırken bir hata oluştu")
+      console.error("Login exception:", err)
+      setError("Giriş yapılırken bir hata oluştu. Lütfen tekrar deneyin.")
     } finally {
       setLoading(false)
     }

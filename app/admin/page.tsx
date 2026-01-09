@@ -35,14 +35,63 @@ interface Coach {
   type: "HEAD_COACH" | "COACH" | "ASSISTANT_COACH" | "PERFORMANCE_ANALYST"
 }
 
+interface User {
+  id: string
+  email: string | null
+  name: string | null
+  studentName: string | null
+  role: "ADMIN" | "COACH" | "MEMBER"
+  createdAt: string
+}
+
+interface Group {
+  id: string
+  name: string
+  description: string | null
+  programId: string
+  program: {
+    id: string
+    title: string
+  }
+  members: Array<{
+    id: string
+    user: {
+      id: string
+      name: string | null
+      studentName: string | null
+      email: string | null
+    }
+  }>
+  createdAt: string
+}
+
 export default function AdminPage() {
   const { user, loading: userLoading } = useUser()
   const router = useRouter()
   const [programs, setPrograms] = useState<Program[]>([])
   const [tournaments, setTournaments] = useState<Tournament[]>([])
   const [coaches, setCoaches] = useState<Coach[]>([])
-  const [activeTab, setActiveTab] = useState<"programs" | "tournaments" | "coaches" | "members">("programs")
+  const [users, setUsers] = useState<User[]>([])
+  const [groups, setGroups] = useState<Group[]>([])
+  const [activeTab, setActiveTab] = useState<"programs" | "tournaments" | "coaches" | "members" | "groups">("programs")
   const [loading, setLoading] = useState(true)
+  const [editingUser, setEditingUser] = useState<User | null>(null)
+  const [showAddUserForm, setShowAddUserForm] = useState(false)
+  const [newUserData, setNewUserData] = useState({
+    name: "",
+    studentName: "",
+    email: "",
+    role: "MEMBER" as "ADMIN" | "COACH" | "MEMBER",
+  })
+  const [editingGroup, setEditingGroup] = useState<Group | null>(null)
+  const [showAddGroupForm, setShowAddGroupForm] = useState(false)
+  const [newGroupData, setNewGroupData] = useState({
+    name: "",
+    description: "",
+    programId: "",
+    memberIds: [] as string[],
+  })
+  const [assigningProgramToUser, setAssigningProgramToUser] = useState<string | null>(null)
 
   useEffect(() => {
     if (!userLoading && !user) {
@@ -61,10 +110,12 @@ export default function AdminPage() {
   const fetchData = async () => {
     try {
       const timestamp = Date.now()
-      const [programsRes, tournamentsRes, coachesRes] = await Promise.all([
+      const [programsRes, tournamentsRes, coachesRes, usersRes, groupsRes] = await Promise.all([
         fetch(`/api/programs?t=${timestamp}`, { cache: 'no-store', next: { revalidate: 0 } }),
         fetch(`/api/tournaments?t=${timestamp}`, { cache: 'no-store', next: { revalidate: 0 } }),
         fetch(`/api/coaches?t=${timestamp}`, { cache: 'no-store', next: { revalidate: 0 } }),
+        fetch(`/api/users?t=${timestamp}`, { cache: 'no-store', next: { revalidate: 0 } }),
+        fetch(`/api/groups?t=${timestamp}`, { cache: 'no-store', next: { revalidate: 0 } }),
       ])
 
       if (programsRes.ok) {
@@ -80,6 +131,16 @@ export default function AdminPage() {
       if (coachesRes.ok) {
         const coachesData = await coachesRes.json()
         setCoaches(coachesData)
+      }
+
+      if (usersRes.ok) {
+        const usersData = await usersRes.json()
+        setUsers(usersData)
+      }
+
+      if (groupsRes.ok) {
+        const groupsData = await groupsRes.json()
+        setGroups(groupsData)
       }
     } catch (error) {
       console.error("Error fetching data:", error)
@@ -149,6 +210,98 @@ export default function AdminPage() {
     return labels[type] || type
   }
 
+  const getRoleLabel = (role: string) => {
+    const labels: Record<string, string> = {
+      ADMIN: "Admin",
+      COACH: "Antrenör",
+      MEMBER: "Üye",
+    }
+    return labels[role] || role
+  }
+
+  const handleAssignProgram = async (userId: string, programId: string) => {
+    try {
+      const response = await fetch("/api/enrollments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, programId }),
+        cache: 'no-store',
+      })
+
+      if (response.ok) {
+        alert("Kullanıcı programa başarıyla atandı")
+      } else {
+        const errorData = await response.json()
+        alert(errorData.error || "Program atama sırasında bir hata oluştu")
+      }
+    } catch (error) {
+      alert("Program atama sırasında bir hata oluştu")
+    }
+  }
+
+  const handleUpdateUser = async (userId: string, updates: Partial<User>) => {
+    try {
+      const response = await fetch(`/api/users/${userId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+        cache: 'no-store',
+      })
+
+      if (response.ok) {
+        fetchData()
+        setEditingUser(null)
+        
+        // If updating own role, reload page to refresh user context
+        if (user && userId === user.id && updates.role) {
+          window.location.reload()
+        }
+      } else {
+        const errorData = await response.json()
+        alert(errorData.error || "Kullanıcı güncellenirken bir hata oluştu")
+      }
+    } catch (error) {
+      alert("Kullanıcı güncellenirken bir hata oluştu")
+    }
+  }
+
+  const handleCreateUser = async () => {
+    if (!newUserData.name || newUserData.name.trim().length < 2) {
+      alert("İsim en az 2 karakter olmalıdır")
+      return
+    }
+
+    try {
+      const response = await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newUserData.name.trim(),
+          studentName: newUserData.studentName.trim() || null,
+          email: newUserData.email.trim() || null,
+          role: newUserData.role,
+        }),
+        cache: 'no-store',
+      })
+
+      if (response.ok) {
+        fetchData()
+        setShowAddUserForm(false)
+        setNewUserData({
+          name: "",
+          studentName: "",
+          email: "",
+          role: "MEMBER",
+        })
+      } else {
+        const errorData = await response.json()
+        alert(errorData.error || "Öğrenci oluşturulurken bir hata oluştu")
+      }
+    } catch (error) {
+      alert("Öğrenci oluşturulurken bir hata oluştu")
+    }
+  }
+
   if (userLoading || loading) {
     return (
       <div className="text-[#0b0b0b] min-h-screen flex items-center justify-center">
@@ -209,6 +362,28 @@ export default function AdminPage() {
           >
             Koçlar
           </button>
+          <button
+            onClick={() => setActiveTab("members")}
+            className={`px-4 py-2 text-sm font-semibold transition ${
+              activeTab === "members"
+                ? "border-b-2 border-gold-500 text-gold-600"
+                : "text-[#4a4a4a] hover:text-[#0b0b0b]"
+            }`}
+          >
+            Üyeler
+          </button>
+          {user?.role === "ADMIN" && (
+            <button
+              onClick={() => setActiveTab("groups")}
+              className={`px-4 py-2 text-sm font-semibold transition ${
+                activeTab === "groups"
+                  ? "border-b-2 border-gold-500 text-gold-600"
+                  : "text-[#4a4a4a] hover:text-[#0b0b0b]"
+              }`}
+            >
+              Gruplar
+            </button>
+          )}
         </div>
 
         {activeTab === "programs" && (
@@ -397,6 +572,719 @@ export default function AdminPage() {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {activeTab === "members" && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-[#0b0b0b]">Üyeler</h2>
+              <button
+                onClick={() => setShowAddUserForm(true)}
+                className="rounded-full bg-gradient-to-r from-gold-400 to-amber-500 px-4 py-2 text-sm font-semibold text-black shadow-lg shadow-gold-500/25 transition hover:-translate-y-0.5 hover:shadow-gold-400/40"
+              >
+                + Yeni Öğrenci Ekle
+              </button>
+            </div>
+
+            {/* Add User Form Modal */}
+            {showAddUserForm && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
+                  <div className="p-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-xl font-bold text-[#0b0b0b]">
+                        Yeni Öğrenci Ekle
+                      </h3>
+                      <button
+                        onClick={() => {
+                          setShowAddUserForm(false)
+                          setNewUserData({
+                            name: "",
+                            studentName: "",
+                            email: "",
+                            role: "MEMBER",
+                          })
+                        }}
+                        className="text-[#4a4a4a] hover:text-[#0b0b0b]"
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-[#0b0b0b] mb-2">
+                          Ad Soyad *
+                        </label>
+                        <input
+                          type="text"
+                          value={newUserData.name}
+                          onChange={(e) =>
+                            setNewUserData({ ...newUserData, name: e.target.value })
+                          }
+                          required
+                          className="w-full rounded-xl border border-[#0b0b0b]/10 bg-[#f7f4ec] px-4 py-2 text-sm text-[#0b0b0b] focus:border-gold-400 focus:outline-none"
+                          placeholder="Öğrenci adı soyadı"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-[#0b0b0b] mb-2">
+                          Öğrenci Adı <span className="text-xs text-[#4a4a4a]">(Opsiyonel)</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={newUserData.studentName}
+                          onChange={(e) =>
+                            setNewUserData({ ...newUserData, studentName: e.target.value })
+                          }
+                          className="w-full rounded-xl border border-[#0b0b0b]/10 bg-[#f7f4ec] px-4 py-2 text-sm text-[#0b0b0b] focus:border-gold-400 focus:outline-none"
+                          placeholder="Derslerde kullanılacak isim"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-[#0b0b0b] mb-2">
+                          Email <span className="text-xs text-[#4a4a4a]">(Opsiyonel)</span>
+                        </label>
+                        <input
+                          type="email"
+                          value={newUserData.email}
+                          onChange={(e) =>
+                            setNewUserData({ ...newUserData, email: e.target.value })
+                          }
+                          className="w-full rounded-xl border border-[#0b0b0b]/10 bg-[#f7f4ec] px-4 py-2 text-sm text-[#0b0b0b] focus:border-gold-400 focus:outline-none"
+                          placeholder="ornek@email.com (opsiyonel)"
+                        />
+                        <p className="text-xs text-[#4a4a4a] mt-1">
+                          Email belirtilmezse, öğrenci login/register yapamaz
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-[#0b0b0b] mb-2">
+                          Rol
+                        </label>
+                        <select
+                          value={newUserData.role}
+                          onChange={(e) =>
+                            setNewUserData({
+                              ...newUserData,
+                              role: e.target.value as "ADMIN" | "COACH" | "MEMBER",
+                            })
+                          }
+                          className="w-full rounded-xl border border-[#0b0b0b]/10 bg-[#f7f4ec] px-4 py-2 text-sm text-[#0b0b0b] focus:border-gold-400 focus:outline-none"
+                        >
+                          <option value="MEMBER">Üye</option>
+                          <option value="COACH">Antrenör</option>
+                          {user?.role === "ADMIN" && (
+                            <option value="ADMIN">Admin</option>
+                          )}
+                        </select>
+                      </div>
+
+                      <div className="flex gap-4 pt-4">
+                        <button
+                          onClick={handleCreateUser}
+                          className="flex-1 rounded-lg bg-gradient-to-r from-gold-400 to-amber-500 px-5 py-3 text-sm font-semibold text-black shadow-lg shadow-gold-500/30 transition hover:-translate-y-0.5 hover:shadow-gold-400/40"
+                        >
+                          Oluştur
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowAddUserForm(false)
+                            setNewUserData({
+                              name: "",
+                              studentName: "",
+                              email: "",
+                              role: "MEMBER",
+                            })
+                          }}
+                          className="rounded-lg border border-[#0b0b0b]/10 bg-white px-5 py-3 text-sm font-semibold text-[#0b0b0b] transition hover:bg-[#f7f4ec]"
+                        >
+                          İptal
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="grid gap-4">
+              {users.map((user) => (
+                <div
+                  key={user.id}
+                  className="rounded-2xl border border-[#0b0b0b]/6 bg-white p-6 shadow-lg shadow-black/10"
+                >
+                  {editingUser?.id === user.id ? (
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-[#0b0b0b] mb-2">
+                          Ad Soyad
+                        </label>
+                        <input
+                          type="text"
+                          value={editingUser.name || ""}
+                          onChange={(e) =>
+                            setEditingUser({ ...editingUser, name: e.target.value })
+                          }
+                          className="w-full rounded-xl border border-[#0b0b0b]/10 bg-[#f7f4ec] px-4 py-2 text-sm text-[#0b0b0b] focus:border-gold-400 focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-[#0b0b0b] mb-2">
+                          Öğrenci Adı
+                        </label>
+                        <input
+                          type="text"
+                          value={editingUser.studentName || ""}
+                          onChange={(e) =>
+                            setEditingUser({ ...editingUser, studentName: e.target.value })
+                          }
+                          className="w-full rounded-xl border border-[#0b0b0b]/10 bg-[#f7f4ec] px-4 py-2 text-sm text-[#0b0b0b] focus:border-gold-400 focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-[#0b0b0b] mb-2">
+                          Rol
+                        </label>
+                        <select
+                          value={editingUser.role}
+                          onChange={(e) =>
+                            setEditingUser({
+                              ...editingUser,
+                              role: e.target.value as "ADMIN" | "COACH" | "MEMBER",
+                            })
+                          }
+                          className="w-full rounded-xl border border-[#0b0b0b]/10 bg-[#f7f4ec] px-4 py-2 text-sm text-[#0b0b0b] focus:border-gold-400 focus:outline-none"
+                        >
+                          <option value="MEMBER">Üye</option>
+                          <option value="COACH">Antrenör</option>
+                          <option value="ADMIN">Admin</option>
+                        </select>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleUpdateUser(user.id, editingUser)}
+                          className="rounded-lg border border-gold-400/50 bg-gold-500/15 px-4 py-2 text-sm font-semibold text-gold-800 transition hover:bg-gold-500/25"
+                        >
+                          Kaydet
+                        </button>
+                        <button
+                          onClick={() => setEditingUser(null)}
+                          className="rounded-lg border border-[#0b0b0b]/10 bg-[#f7f4ec] px-4 py-2 text-sm font-semibold text-[#0b0b0b] transition hover:bg-[#efe7d7]"
+                        >
+                          İptal
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="text-lg font-semibold text-[#0b0b0b]">
+                            {user.name || "İsimsiz"}
+                          </h3>
+                          <span className="rounded-full border border-gold-400/50 bg-gold-500/15 px-2 py-0.5 text-xs font-semibold text-gold-800">
+                            {getRoleLabel(user.role)}
+                          </span>
+                        </div>
+                        <p className="text-sm text-[#4a4a4a] mb-1">
+                          {user.email || <span className="italic text-[#6b6b6b]">Email yok (Login yapamaz)</span>}
+                        </p>
+                        {user.studentName && (
+                          <p className="text-sm text-gold-700">
+                            Öğrenci Adı: {user.studentName}
+                          </p>
+                        )}
+                        <p className="text-xs text-[#4a4a4a] mt-2">
+                          Kayıt: {new Date(user.createdAt).toLocaleDateString("tr-TR")}
+                        </p>
+                      </div>
+                      <div className="flex gap-2 ml-4">
+                        <button
+                          onClick={() => setAssigningProgramToUser(user.id)}
+                          className="rounded-lg border border-blue-400/50 bg-blue-500/15 px-3 py-1.5 text-xs font-semibold text-blue-800 transition hover:bg-blue-500/25"
+                          title="Programa ata"
+                        >
+                          📚 Programa Ata
+                        </button>
+                        <button
+                          onClick={() => setEditingUser(user)}
+                          className="rounded-lg border border-gold-400/50 bg-gold-500/15 px-3 py-1.5 text-xs font-semibold text-gold-800 transition hover:bg-gold-500/25"
+                        >
+                          Düzenle
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === "groups" && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-[#0b0b0b]">Gruplar</h2>
+              <button
+                onClick={() => {
+                  setShowAddGroupForm(true)
+                  setNewGroupData({
+                    name: "",
+                    description: "",
+                    programId: "",
+                    memberIds: [],
+                  })
+                }}
+                className="rounded-full bg-gradient-to-r from-gold-400 to-amber-500 px-4 py-2 text-sm font-semibold text-black shadow-lg shadow-gold-500/25 transition hover:-translate-y-0.5 hover:shadow-gold-400/40"
+              >
+                + Yeni Grup Ekle
+              </button>
+            </div>
+
+            <div className="grid gap-4">
+              {groups.map((group) => (
+                <div
+                  key={group.id}
+                  className="rounded-2xl border border-[#0b0b0b]/6 bg-white p-6 shadow-lg shadow-black/10"
+                >
+                  {editingGroup?.id === group.id ? (
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-[#0b0b0b] mb-2">
+                          Grup Adı
+                        </label>
+                        <input
+                          type="text"
+                          value={editingGroup.name}
+                          onChange={(e) =>
+                            setEditingGroup({ ...editingGroup, name: e.target.value })
+                          }
+                          className="w-full rounded-xl border border-[#0b0b0b]/10 bg-[#f7f4ec] px-4 py-2 text-sm text-[#0b0b0b] focus:border-gold-400 focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-[#0b0b0b] mb-2">
+                          Açıklama
+                        </label>
+                        <textarea
+                          value={editingGroup.description || ""}
+                          onChange={(e) =>
+                            setEditingGroup({ ...editingGroup, description: e.target.value })
+                          }
+                          rows={3}
+                          className="w-full rounded-xl border border-[#0b0b0b]/10 bg-[#f7f4ec] px-4 py-2 text-sm text-[#0b0b0b] focus:border-gold-400 focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-[#0b0b0b] mb-2">
+                          Program
+                        </label>
+                        <select
+                          value={editingGroup.programId}
+                          onChange={(e) =>
+                            setEditingGroup({ ...editingGroup, programId: e.target.value })
+                          }
+                          className="w-full rounded-xl border border-[#0b0b0b]/10 bg-[#f7f4ec] px-4 py-2 text-sm text-[#0b0b0b] focus:border-gold-400 focus:outline-none"
+                        >
+                          <option value="">Program seçin...</option>
+                          {programs.map((program) => (
+                            <option key={program.id} value={program.id}>
+                              {program.title}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-[#0b0b0b] mb-2">
+                          Üyeler
+                        </label>
+                        <div className="max-h-40 overflow-y-auto space-y-2 border border-[#0b0b0b]/10 rounded-xl p-3 bg-[#f7f4ec]">
+                          {users.map((user) => (
+                            <label
+                              key={user.id}
+                              className="flex items-center gap-2 cursor-pointer"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={editingGroup.members.some((m) => m.user.id === user.id)}
+                                onChange={(e) => {
+                                  const memberIds = editingGroup.members.map((m) => m.user.id)
+                                  if (e.target.checked) {
+                                    setEditingGroup({
+                                      ...editingGroup,
+                                      members: [
+                                        ...editingGroup.members,
+                                        { id: "", user },
+                                      ],
+                                    })
+                                  } else {
+                                    setEditingGroup({
+                                      ...editingGroup,
+                                      members: editingGroup.members.filter(
+                                        (m) => m.user.id !== user.id
+                                      ),
+                                    })
+                                  }
+                                }}
+                                className="rounded border-[#0b0b0b]/10"
+                              />
+                              <span className="text-sm text-[#0b0b0b]">
+                                {user.name || user.email || "İsimsiz"} {user.studentName && `(${user.studentName})`}
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={async () => {
+                            try {
+                              const response = await fetch(`/api/groups/${group.id}`, {
+                                method: "PUT",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  name: editingGroup.name,
+                                  description: editingGroup.description,
+                                  programId: editingGroup.programId,
+                                  memberIds: editingGroup.members.map((m) => m.user.id),
+                                }),
+                                cache: 'no-store',
+                              })
+
+                              if (response.ok) {
+                                fetchData()
+                                setEditingGroup(null)
+                              } else {
+                                const errorData = await response.json()
+                                alert(errorData.error || "Grup güncellenirken bir hata oluştu")
+                              }
+                            } catch (error) {
+                              alert("Grup güncellenirken bir hata oluştu")
+                            }
+                          }}
+                          className="rounded-lg border border-gold-400/50 bg-gold-500/15 px-4 py-2 text-sm font-semibold text-gold-800 transition hover:bg-gold-500/25"
+                        >
+                          Kaydet
+                        </button>
+                        <button
+                          onClick={() => setEditingGroup(null)}
+                          className="rounded-lg border border-[#0b0b0b]/10 bg-[#f7f4ec] px-4 py-2 text-sm font-semibold text-[#0b0b0b] transition hover:bg-[#efe7d7]"
+                        >
+                          İptal
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="text-lg font-semibold text-[#0b0b0b]">
+                            {group.name}
+                          </h3>
+                          <span className="rounded-full border border-blue-400/50 bg-blue-500/15 px-2 py-0.5 text-xs font-semibold text-blue-800">
+                            {group.program.title}
+                          </span>
+                        </div>
+                        {group.description && (
+                          <p className="text-sm text-[#4a4a4a] mb-2">{group.description}</p>
+                        )}
+                        <div className="mt-3">
+                          <p className="text-xs font-semibold text-[#0b0b0b] mb-2">
+                            Üyeler ({group.members.length}):
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {group.members.map((member) => (
+                              <span
+                                key={member.id}
+                                className="rounded-full border border-gold-400/50 bg-gold-500/15 px-2 py-1 text-xs font-medium text-gold-800"
+                              >
+                                {member.user.name || member.user.studentName || member.user.email || "İsimsiz"}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                        <p className="text-xs text-[#4a4a4a] mt-2">
+                          Oluşturulma: {new Date(group.createdAt).toLocaleDateString("tr-TR")}
+                        </p>
+                      </div>
+                      <div className="flex gap-2 ml-4">
+                        <button
+                          onClick={() => setEditingGroup(group)}
+                          className="rounded-lg border border-gold-400/50 bg-gold-500/15 px-3 py-1.5 text-xs font-semibold text-gold-800 transition hover:bg-gold-500/25"
+                        >
+                          Düzenle
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (!confirm("Bu grubu silmek istediğinize emin misiniz?")) return
+                            try {
+                              const response = await fetch(`/api/groups/${group.id}`, {
+                                method: "DELETE",
+                                cache: 'no-store',
+                              })
+
+                              if (response.ok) {
+                                fetchData()
+                              } else {
+                                alert("Grup silinirken bir hata oluştu")
+                              }
+                            } catch (error) {
+                              alert("Grup silinirken bir hata oluştu")
+                            }
+                          }}
+                          className="rounded-lg border border-red-400/50 bg-red-500/15 px-3 py-1.5 text-xs font-semibold text-red-800 transition hover:bg-red-500/25"
+                        >
+                          Sil
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Add Group Form Modal */}
+            {showAddGroupForm && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                  <div className="p-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-xl font-bold text-[#0b0b0b]">
+                        Yeni Grup Ekle
+                      </h3>
+                      <button
+                        onClick={() => {
+                          setShowAddGroupForm(false)
+                          setNewGroupData({
+                            name: "",
+                            description: "",
+                            programId: "",
+                            memberIds: [],
+                          })
+                        }}
+                        className="text-[#4a4a4a] hover:text-[#0b0b0b]"
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-[#0b0b0b] mb-2">
+                          Grup Adı *
+                        </label>
+                        <input
+                          type="text"
+                          value={newGroupData.name}
+                          onChange={(e) =>
+                            setNewGroupData({ ...newGroupData, name: e.target.value })
+                          }
+                          required
+                          className="w-full rounded-xl border border-[#0b0b0b]/10 bg-[#f7f4ec] px-4 py-2 text-sm text-[#0b0b0b] focus:border-gold-400 focus:outline-none"
+                          placeholder="Grup adı"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-[#0b0b0b] mb-2">
+                          Açıklama
+                        </label>
+                        <textarea
+                          value={newGroupData.description}
+                          onChange={(e) =>
+                            setNewGroupData({ ...newGroupData, description: e.target.value })
+                          }
+                          rows={3}
+                          className="w-full rounded-xl border border-[#0b0b0b]/10 bg-[#f7f4ec] px-4 py-2 text-sm text-[#0b0b0b] focus:border-gold-400 focus:outline-none"
+                          placeholder="Grup açıklaması (opsiyonel)"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-[#0b0b0b] mb-2">
+                          Program *
+                        </label>
+                        <select
+                          value={newGroupData.programId}
+                          onChange={(e) =>
+                            setNewGroupData({ ...newGroupData, programId: e.target.value })
+                          }
+                          required
+                          className="w-full rounded-xl border border-[#0b0b0b]/10 bg-[#f7f4ec] px-4 py-2 text-sm text-[#0b0b0b] focus:border-gold-400 focus:outline-none"
+                        >
+                          <option value="">Program seçin...</option>
+                          {programs.map((program) => (
+                            <option key={program.id} value={program.id}>
+                              {program.title}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-[#0b0b0b] mb-2">
+                          Üyeler
+                        </label>
+                        <div className="max-h-60 overflow-y-auto space-y-2 border border-[#0b0b0b]/10 rounded-xl p-3 bg-[#f7f4ec]">
+                          {users.map((user) => (
+                            <label
+                              key={user.id}
+                              className="flex items-center gap-2 cursor-pointer"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={newGroupData.memberIds.includes(user.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setNewGroupData({
+                                      ...newGroupData,
+                                      memberIds: [...newGroupData.memberIds, user.id],
+                                    })
+                                  } else {
+                                    setNewGroupData({
+                                      ...newGroupData,
+                                      memberIds: newGroupData.memberIds.filter(
+                                        (id) => id !== user.id
+                                      ),
+                                    })
+                                  }
+                                }}
+                                className="rounded border-[#0b0b0b]/10"
+                              />
+                              <span className="text-sm text-[#0b0b0b]">
+                                {user.name || user.email || "İsimsiz"} {user.studentName && `(${user.studentName})`}
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex gap-4 pt-4">
+                        <button
+                          onClick={async () => {
+                            if (!newGroupData.name || !newGroupData.programId) {
+                              alert("Grup adı ve program seçimi gereklidir")
+                              return
+                            }
+
+                            try {
+                              const response = await fetch("/api/groups", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify(newGroupData),
+                                cache: 'no-store',
+                              })
+
+                              if (response.ok) {
+                                fetchData()
+                                setShowAddGroupForm(false)
+                                setNewGroupData({
+                                  name: "",
+                                  description: "",
+                                  programId: "",
+                                  memberIds: [],
+                                })
+                              } else {
+                                const errorData = await response.json()
+                                alert(errorData.error || "Grup oluşturulurken bir hata oluştu")
+                              }
+                            } catch (error) {
+                              alert("Grup oluşturulurken bir hata oluştu")
+                            }
+                          }}
+                          className="flex-1 rounded-lg bg-gradient-to-r from-gold-400 to-amber-500 px-5 py-3 text-sm font-semibold text-black shadow-lg shadow-gold-500/30 transition hover:-translate-y-0.5 hover:shadow-gold-400/40"
+                        >
+                          Oluştur
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowAddGroupForm(false)
+                            setNewGroupData({
+                              name: "",
+                              description: "",
+                              programId: "",
+                              memberIds: [],
+                            })
+                          }}
+                          className="rounded-lg border border-[#0b0b0b]/10 bg-white px-5 py-3 text-sm font-semibold text-[#0b0b0b] transition hover:bg-[#f7f4ec]"
+                        >
+                          İptal
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Assign Program Modal */}
+            {assigningProgramToUser && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
+                  <div className="p-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-xl font-bold text-[#0b0b0b]">
+                        Programa Ata
+                      </h3>
+                      <button
+                        onClick={() => setAssigningProgramToUser(null)}
+                        className="text-[#4a4a4a] hover:text-[#0b0b0b]"
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-[#0b0b0b] mb-2">
+                          Program Seçin *
+                        </label>
+                        <select
+                          id="programSelect"
+                          className="w-full rounded-xl border border-[#0b0b0b]/10 bg-[#f7f4ec] px-4 py-2 text-sm text-[#0b0b0b] focus:border-gold-400 focus:outline-none"
+                        >
+                          <option value="">Program seçin...</option>
+                          {programs.map((program) => (
+                            <option key={program.id} value={program.id}>
+                              {program.title}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="flex gap-4 pt-4">
+                        <button
+                          onClick={async () => {
+                            const select = document.getElementById("programSelect") as HTMLSelectElement
+                            const programId = select?.value
+                            if (!programId) {
+                              alert("Lütfen bir program seçin")
+                              return
+                            }
+                            await handleAssignProgram(assigningProgramToUser, programId)
+                            setAssigningProgramToUser(null)
+                          }}
+                          className="flex-1 rounded-lg bg-gradient-to-r from-blue-400 to-blue-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/30 transition hover:-translate-y-0.5 hover:shadow-blue-400/40"
+                        >
+                          Ata
+                        </button>
+                        <button
+                          onClick={() => setAssigningProgramToUser(null)}
+                          className="rounded-lg border border-[#0b0b0b]/10 bg-white px-5 py-3 text-sm font-semibold text-[#0b0b0b] transition hover:bg-[#f7f4ec]"
+                        >
+                          İptal
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </section>

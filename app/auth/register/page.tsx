@@ -11,6 +11,7 @@ export default function RegisterPage() {
   const supabase = createClient()
   const [formData, setFormData] = useState({
     name: "",
+    studentName: "",
     email: "",
     password: "",
     confirmPassword: "",
@@ -60,6 +61,7 @@ export default function RegisterPage() {
           body: JSON.stringify({
             id: authData.user.id,
             name: formData.name,
+            studentName: formData.studentName || null,
             email: formData.email,
           }),
         })
@@ -119,6 +121,19 @@ export default function RegisterPage() {
                 required
                 className="w-full rounded-xl border border-[#0b0b0b]/10 bg-[#f7f4ec] px-4 py-3 text-sm text-[#0b0b0b] placeholder:text-[#4a4a4a]/60 focus:border-gold-400 focus:outline-none"
                 placeholder="Adınız Soyadınız"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-[#0b0b0b] mb-2">
+                Öğrenci Adı <span className="text-xs text-[#4a4a4a]">(Opsiyonel)</span>
+              </label>
+              <input
+                type="text"
+                value={formData.studentName}
+                onChange={(e) => setFormData({ ...formData, studentName: e.target.value })}
+                className="w-full rounded-xl border border-[#0b0b0b]/10 bg-[#f7f4ec] px-4 py-3 text-sm text-[#0b0b0b] placeholder:text-[#4a4a4a]/60 focus:border-gold-400 focus:outline-none"
+                placeholder="Öğrenci adı (varsa)"
               />
             </div>
 

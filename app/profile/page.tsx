@@ -104,15 +104,13 @@ export default function ProfilePage() {
       <section className="mx-auto max-w-7xl px-4 py-16 md:px-6 md:py-24">
         <div className="grid gap-8 md:grid-cols-3">
           <div className="md:col-span-2 space-y-6">
-            {/* Coach Calendar - Only for COACH or ADMIN */}
-            {(user.role === "COACH" || user.role === "ADMIN") && (
-              <div className="rounded-2xl border border-[#0b0b0b]/6 bg-white p-6 shadow-lg shadow-black/10">
-                <h3 className="text-lg font-semibold text-[#0b0b0b] mb-6">
-                  Ders Takvimi
-                </h3>
-                <CoachCalendar userId={user.id} />
-              </div>
-            )}
+            {/* Coach Calendar - For COACH, ADMIN, and MEMBER (view-only for MEMBER) */}
+            <div className="rounded-2xl border border-[#0b0b0b]/6 bg-white p-6 shadow-lg shadow-black/10">
+              <h3 className="text-lg font-semibold text-[#0b0b0b] mb-6">
+                {user.role === "MEMBER" ? "Derslerim" : "Ders Takvimi"}
+              </h3>
+              <CoachCalendar userId={user.id} />
+            </div>
 
             {/* Enrollments - Only for MEMBER */}
             {user.role === "MEMBER" && (

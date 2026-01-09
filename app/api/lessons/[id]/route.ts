@@ -8,7 +8,8 @@ const lessonUpdateSchema = z.object({
   startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).optional(),
   endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).optional(),
   type: z.enum(["INDIVIDUAL", "GROUP"]).optional(),
-  studentNames: z.array(z.string()).optional(),
+  studentIds: z.array(z.string()).optional(),
+  groupId: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
 })
 
@@ -107,6 +108,30 @@ export async function PUT(
       where: { id },
     })
 
+    // Validate student IDs if provided
+    if (validatedData.studentIds && validatedData.studentIds.length > 0) {
+      const allUsers = await prisma.user.findMany({
+        select: {
+          id: true,
+        }
+      })
+
+      const validUserIds = new Set(allUsers.map(u => u.id))
+      const invalidIds = validatedData.studentIds.filter(
+        id => !validUserIds.has(id)
+      )
+
+      if (invalidIds.length > 0) {
+        return NextResponse.json(
+          { 
+            error: `Geçersiz öğrenci ID'leri: ${invalidIds.join(', ')}`,
+            invalidIds
+          },
+          { status: 400 }
+        )
+      }
+    }
+
     if (!existingLesson) {
       return NextResponse.json(
         { error: "Ders bulunamadı" },
@@ -134,6 +159,7 @@ export async function PUT(
     if (validatedData.endTime) updateData.endTime = validatedData.endTime
     if (validatedData.type) updateData.type = validatedData.type
     if (validatedData.studentNames) updateData.studentNames = validatedData.studentNames
+    if (validatedData.groupId !== undefined) updateData.groupId = validatedData.groupId || null
     if (validatedData.notes !== undefined) updateData.notes = validatedData.notes
 
     const lesson = await prisma.lesson.update({

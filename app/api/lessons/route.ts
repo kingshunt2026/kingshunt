@@ -11,7 +11,8 @@ const lessonSchema = z.object({
   startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Geçerli bir saat formatı giriniz (HH:mm)"),
   endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Geçerli bir saat formatı giriniz (HH:mm)"),
   type: z.enum(["INDIVIDUAL", "GROUP"]),
-  studentNames: z.array(z.string().min(1, "Öğrenci ismi boş olamaz")).min(1, "En az bir öğrenci ismi gereklidir"),
+  studentIds: z.array(z.string().min(1, "Öğrenci ID boş olamaz")).min(1, "En az bir öğrenci gereklidir"),
+  groupId: z.string().optional().nullable(),
   isRecurring: z.boolean().default(false),
   recurringEndDate: z.string().refine((val) => {
     if (!val || val === null || val === "") return true
@@ -37,16 +38,20 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Get user role from database
+    // Get user role and info from database
     const dbUser = await prisma.user.findUnique({
       where: { id: user.id },
-      select: { role: true }
+      select: { 
+        role: true,
+        name: true,
+        studentName: true,
+      }
     })
 
-    if (!dbUser || (dbUser.role !== "COACH" && dbUser.role !== "ADMIN")) {
+    if (!dbUser) {
       return NextResponse.json(
-        { error: "Yetkisiz erişim - Sadece antrenörler dersleri görüntüleyebilir" },
-        { status: 403 }
+        { error: "Kullanıcı bulunamadı" },
+        { status: 404 }
       )
     }
 
@@ -55,8 +60,97 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get("startDate")
     const endDate = searchParams.get("endDate")
 
-    const where: any = {
-      coachId: user.id,
+    const where: any = {}
+
+    // MEMBER can only see lessons where they are a student
+    if (dbUser.role === "MEMBER") {
+      // Get all possible names for this user (studentName and name)
+      const possibleNames: string[] = []
+      if (dbUser.studentName) possibleNames.push(dbUser.studentName.trim())
+      if (dbUser.name) possibleNames.push(dbUser.name.trim())
+      
+      if (possibleNames.length === 0) {
+        // If no student name or name, return empty array
+        return NextResponse.json([], {
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+          }
+        })
+      }
+      
+      // Find lessons where studentIds array contains the user's ID
+      const allLessons = await prisma.lesson.findMany({
+        where: startDate && endDate ? {
+          date: {
+            gte: new Date(startDate),
+            lte: new Date(endDate),
+          },
+          studentIds: {
+            has: user.id
+          }
+        } : {
+          studentIds: {
+            has: user.id
+          }
+        },
+        include: {
+          coach: {
+            select: {
+              id: true,
+              name: true,
+            }
+          }
+        },
+        orderBy: [
+          { date: "asc" },
+          { startTime: "asc" },
+        ],
+      })
+      
+      // Fetch student information for each lesson
+      const lessonsWithStudents = await Promise.all(
+        allLessons.map(async (lesson) => {
+          const students = await prisma.user.findMany({
+            where: {
+              id: { in: lesson.studentIds }
+            },
+            select: {
+              id: true,
+              name: true,
+              studentName: true,
+              email: true,
+            }
+          })
+          return {
+            ...lesson,
+            students: students.map(s => ({
+              id: s.id,
+              name: s.studentName || s.name || s.email || "İsimsiz"
+            }))
+          }
+        })
+      )
+      
+      return NextResponse.json(lessonsWithStudents, {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        }
+      })
+    } else if (dbUser.role === "COACH") {
+      // COACH can only see their own lessons
+      where.coachId = user.id
+    } else if (dbUser.role === "ADMIN") {
+      // ADMIN can see all lessons
+      // No filter needed
+    } else {
+      return NextResponse.json(
+        { error: "Yetkisiz erişim" },
+        { status: 403 }
+      )
     }
 
     if (startDate && endDate) {
@@ -68,13 +162,45 @@ export async function GET(request: NextRequest) {
 
     const lessons = await prisma.lesson.findMany({
       where,
+      include: {
+        coach: {
+          select: {
+            id: true,
+            name: true,
+          }
+        }
+      },
       orderBy: [
         { date: "asc" },
         { startTime: "asc" },
       ],
     })
 
-    return NextResponse.json(lessons, {
+    // Fetch student information for each lesson
+    const lessonsWithStudents = await Promise.all(
+      lessons.map(async (lesson) => {
+        const students = lesson.studentIds.length > 0 ? await prisma.user.findMany({
+          where: {
+            id: { in: lesson.studentIds }
+          },
+          select: {
+            id: true,
+            name: true,
+            studentName: true,
+            email: true,
+          }
+        }) : []
+        return {
+          ...lesson,
+          students: students.map(s => ({
+            id: s.id,
+            name: s.studentName || s.name || s.email || "İsimsiz"
+          }))
+        }
+      })
+    )
+
+    return NextResponse.json(lessonsWithStudents, {
       headers: {
         'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
         'Pragma': 'no-cache',
@@ -120,8 +246,32 @@ export async function POST(request: NextRequest) {
     // Log for debugging
     console.log("Received lesson data:", JSON.stringify(body, null, 2))
     
-    try {
-      const validatedData = lessonSchema.parse(body)
+    const validatedData = lessonSchema.parse(body)
+
+    // Validate student IDs - they must exist in User table
+    if (validatedData.studentIds && validatedData.studentIds.length > 0) {
+      const allUsers = await prisma.user.findMany({
+        select: {
+          id: true,
+        }
+      })
+
+      // Validate student IDs
+      const validUserIds = new Set(allUsers.map(u => u.id))
+      const invalidIds = validatedData.studentIds.filter(
+        id => !validUserIds.has(id)
+      )
+
+      if (invalidIds.length > 0) {
+        return NextResponse.json(
+          { 
+            error: `Geçersiz öğrenci ID'leri: ${invalidIds.join(', ')}`,
+            invalidIds
+          },
+          { status: 400 }
+        )
+      }
+    }
 
     const lessons = []
 
@@ -140,7 +290,8 @@ export async function POST(request: NextRequest) {
             startTime: validatedData.startTime,
             endTime: validatedData.endTime,
             type: validatedData.type,
-            studentNames: validatedData.studentNames,
+            studentIds: validatedData.studentIds,
+            groupId: validatedData.groupId || null,
             isRecurring: true,
             recurringEndDate: endDate,
             notes: validatedData.notes,
@@ -161,7 +312,8 @@ export async function POST(request: NextRequest) {
           startTime: validatedData.startTime,
           endTime: validatedData.endTime,
           type: validatedData.type,
-          studentNames: validatedData.studentNames,
+          studentIds: validatedData.studentIds,
+          groupId: validatedData.groupId || null,
           isRecurring: false,
           notes: validatedData.notes,
         },
@@ -170,19 +322,6 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(lessons, { status: 201 })
-    } catch (validationError) {
-      if (validationError instanceof z.ZodError) {
-        console.error("Validation error:", validationError.issues)
-        return NextResponse.json(
-          { 
-            error: validationError.issues[0].message,
-            details: validationError.issues 
-          },
-          { status: 400 }
-        )
-      }
-      throw validationError
-    }
   } catch (error) {
     if (error instanceof z.ZodError) {
       console.error("Validation error:", error.issues)

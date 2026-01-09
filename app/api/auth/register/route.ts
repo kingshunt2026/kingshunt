@@ -5,6 +5,7 @@ import { z } from "zod"
 const registerSchema = z.object({
   id: z.string().min(1, "User ID gereklidir"),
   name: z.string().min(2, "İsim en az 2 karakter olmalıdır"),
+  studentName: z.string().nullable().optional(),
   email: z.string().email("Geçerli bir email adresi giriniz"),
 })
 
@@ -48,6 +49,9 @@ export async function POST(request: NextRequest) {
         data: {
           id: validatedData.id,
           name: validatedData.name || existingByEmail.name,
+          ...(validatedData.studentName !== undefined && {
+            studentName: validatedData.studentName,
+          }),
         },
         select: {
           id: true,
@@ -67,6 +71,7 @@ export async function POST(request: NextRequest) {
       data: {
         id: validatedData.id,
         name: validatedData.name,
+        studentName: validatedData.studentName || null,
         email: validatedData.email,
         role: "MEMBER",
       },

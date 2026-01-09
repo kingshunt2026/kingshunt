@@ -26,15 +26,17 @@ enum CoachType {
 }
 
 model User {
-  id        String   @id // Supabase Auth user ID
-  email     String   @unique
-  name      String?
-  role      UserRole @default(MEMBER)
+  id          String   @id @default(cuid()) // Supabase Auth user ID veya auto-generated ID
+  email       String?  @unique // Optional - Supabase Auth olmayan kullanıcılar için null olabilir
+  name        String?
+  studentName String?  // Öğrenci adı
+  role        UserRole @default(MEMBER)
   // password field artık gerekli değil (Supabase Auth yönetiyor)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
   enrollments Enrollment[]
-  lessons   Lesson[] // Antrenör dersleri
+  lessons     Lesson[] // Antrenör dersleri
+  groups      GroupMember[] // Grup üyelikleri
 }
 
 model Program {
@@ -51,6 +53,7 @@ model Program {
   updatedAt   DateTime @updatedAt
 
   enrollments Enrollment[]
+  groups      Group[] // Bu programa bağlı gruplar
 }
 
 model Tournament {
@@ -103,7 +106,8 @@ model Lesson {
   startTime     String     // Format: "HH:mm" (e.g., "14:00")
   endTime       String     // Format: "HH:mm" (e.g., "15:30")
   type          LessonType
-  studentNames  String[]   @default([]) // Öğrenci isimleri
+  studentIds    String[]   @default([]) // Öğrenci user ID'leri
+  groupId       String?    // Grup dersi için grup ID (opsiyonel)
   isRecurring   Boolean    @default(false) // Haftalık tekrar eden mi?
   recurringEndDate DateTime? // Tekrar eden derslerin bitiş tarihi
   notes         String?    @db.Text
@@ -111,8 +115,39 @@ model Lesson {
   updatedAt     DateTime   @updatedAt
 
   coach         User       @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  group         Group?     @relation(fields: [groupId], references: [id], onDelete: SetNull)
 
   @@index([coachId])
   @@index([date])
   @@index([coachId, date])
+  @@index([groupId])
+}
+
+model Group {
+  id          String   @id @default(cuid())
+  name        String
+  description String?  @db.Text
+  programId   String   // Hangi programa bağlı
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  program Program        @relation(fields: [programId], references: [id], onDelete: Cascade)
+  members GroupMember[]  // Grup üyeleri
+  lessons Lesson[]       // Bu gruba ait dersler
+
+  @@index([programId])
+}
+
+model GroupMember {
+  id        String   @id @default(cuid())
+  userId    String
+  groupId   String
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, groupId])
+  @@index([userId])
+  @@index([groupId])
 }

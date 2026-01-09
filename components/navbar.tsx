@@ -89,12 +89,22 @@ export function Navbar() {
                   ⚙️ Admin
                 </Link>
               )}
-              <button
-                onClick={() => signOut()}
-                className="rounded-lg border border-red-400/50 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-100 hover:border-red-500/70 whitespace-nowrap"
-              >
-                Çıkış
-              </button>
+              <div className="flex items-center gap-2">
+                <div className="text-right hidden sm:block">
+                  <div className="text-xs font-medium text-[#0b0b0b]">
+                    {user.name || user.email?.split('@')[0]}
+                  </div>
+                  <div className="text-[10px] text-[#4a4a4a] capitalize">
+                    {user.role === "ADMIN" ? "Admin" : user.role === "COACH" ? "Antrenör" : "Üye"}
+                  </div>
+                </div>
+                <button
+                  onClick={() => signOut()}
+                  className="rounded-lg border border-red-400/50 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-100 hover:border-red-500/70 whitespace-nowrap"
+                >
+                  Çıkış
+                </button>
+              </div>
             </>
           ) : (
             <Link
@@ -197,15 +207,25 @@ export function Navbar() {
                     ⚙️ Admin
                   </Link>
                 )}
-                <button
-                  onClick={() => {
-                    signOut()
-                    setOpen(false)
-                  }}
-                  className="rounded-lg border border-red-400/50 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100 hover:border-red-500/70"
-                >
-                  Çıkış
-                </button>
+                <div className="flex items-center justify-between gap-2 p-2 rounded-lg border border-[#0b0b0b]/5 bg-[#f7f4ec]">
+                  <div>
+                    <div className="text-sm font-medium text-[#0b0b0b]">
+                      {user.name || user.email?.split('@')[0]}
+                    </div>
+                    <div className="text-xs text-[#4a4a4a] capitalize">
+                      {user.role === "ADMIN" ? "Admin" : user.role === "COACH" ? "Antrenör" : "Üye"}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      signOut()
+                      setOpen(false)
+                    }}
+                    className="rounded-lg border border-red-400/50 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100 hover:border-red-500/70"
+                  >
+                    Çıkış
+                  </button>
+                </div>
               </>
             ) : (
               <Link
