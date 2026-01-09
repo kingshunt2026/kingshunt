@@ -88,7 +88,7 @@ export default function AdminPage() {
   const [newGroupData, setNewGroupData] = useState({
     name: "",
     description: "",
-    programId: "",
+    programId: "" as string | null,
     memberIds: [] as string[],
   })
   const [assigningProgramToUser, setAssigningProgramToUser] = useState<string | null>(null)
@@ -1116,7 +1116,7 @@ export default function AdminPage() {
                           Program
                         </label>
                         <select
-                          value={newGroupData.programId}
+                          value={newGroupData.programId || ""}
                           onChange={(e) =>
                             setNewGroupData({ ...newGroupData, programId: e.target.value || null })
                           }
@@ -1194,7 +1194,7 @@ export default function AdminPage() {
                                 setNewGroupData({
                                   name: "",
                                   description: "",
-                                  programId: "",
+                                  programId: null,
                                   memberIds: [],
                                 })
                               } else {
