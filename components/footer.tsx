@@ -26,7 +26,7 @@ import Image from "next/image";
               Şah Avı Akademi
             </p>
             <p className="mt-2 max-w-xl text-sm text-[#4a4a4a]">
-              İstanbul merkezli modern satranç kulübü. Strateji, disiplin ve
+              Online merkezli modern satranç kulübü. Strateji, disiplin ve
               saldırı vizyonunu aynı masada buluşturuyoruz.
             </p>
           </div>

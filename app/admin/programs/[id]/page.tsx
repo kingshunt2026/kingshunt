@@ -12,6 +12,7 @@ interface Program {
   level: string | null
   duration: string | null
   price: string | null
+  imageUrl: string | null
   structure: string[]
   goals: string[]
 }
@@ -27,6 +28,7 @@ export default function EditProgramPage() {
     level: "",
     duration: "",
     price: "",
+    imageUrl: "",
     structure: [] as string[],
     goals: [] as string[],
   })
@@ -52,6 +54,7 @@ export default function EditProgramPage() {
             level: program.level || "",
             duration: program.duration || "",
             price: program.price || "",
+            imageUrl: program.imageUrl || "",
             structure: program.structure || [],
             goals: program.goals || [],
           })
@@ -87,6 +90,7 @@ export default function EditProgramPage() {
           level: formData.level || null,
           duration: formData.duration || null,
           price: formData.price || null,
+          imageUrl: formData.imageUrl || null,
           structure: formData.structure,
           goals: formData.goals,
         }),
@@ -163,6 +167,34 @@ export default function EditProgramPage() {
                 rows={5}
                 className="w-full rounded-xl border border-[#0b0b0b]/10 bg-[#f7f4ec] px-4 py-3 text-sm text-[#0b0b0b] placeholder:text-[#4a4a4a]/60 focus:border-gold-400 focus:outline-none"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-[#0b0b0b] mb-2">
+                Resim URL
+              </label>
+              <input
+                type="url"
+                value={formData.imageUrl}
+                onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+                className="w-full rounded-xl border border-[#0b0b0b]/10 bg-[#f7f4ec] px-4 py-3 text-sm text-[#0b0b0b] placeholder:text-[#4a4a4a]/60 focus:border-gold-400 focus:outline-none"
+                placeholder="https://example.com/image.jpg veya /images/program-1.png"
+              />
+              <p className="mt-1 text-xs text-[#4a4a4a]">
+                Resim URL'si girebilirsiniz. Boş bırakılırsa varsayılan resim kullanılacaktır.
+              </p>
+              {formData.imageUrl && (
+                <div className="mt-2 rounded-lg overflow-hidden border border-[#0b0b0b]/10">
+                  <img
+                    src={formData.imageUrl}
+                    alt="Önizleme"
+                    className="w-full h-32 object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                </div>
+              )}
             </div>
 
             <div className="grid gap-4 md:grid-cols-3">

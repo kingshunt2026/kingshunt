@@ -13,6 +13,7 @@ interface Program {
   level: string | null;
   duration: string | null;
   price: string | null;
+  imageUrl: string | null;
   structure: string[];
   goals: string[];
 }
@@ -23,7 +24,17 @@ async function getPrograms(): Promise<Program[]> {
     const programs = await prisma.program.findMany({
       orderBy: { createdAt: "desc" },
     });
-    return programs;
+    return programs.map(p => ({
+      id: p.id,
+      title: p.title,
+      description: p.description,
+      level: p.level,
+      duration: p.duration,
+      price: p.price,
+      imageUrl: (p as any).imageUrl || null,
+      structure: p.structure,
+      goals: p.goals,
+    })) as Program[];
   } catch (error) {
     console.error("Error fetching programs:", error);
     return [];
@@ -131,56 +142,55 @@ export default async function Home() {
 
           {/* Right Side: Illustrative image area */}
           <div className="w-full md:w-1/2 flex flex-col justify-center items-center relative">
-            <div className="relative bg-gradient-to-br from-white/70 to-[#ecdfcb] rounded-3xl p-6 shadow-xl shadow-black/10 border border-[#be521c]/10 flex flex-col items-center min-h-[320px] w-full max-w-md">
-              {/* Chess piece images in layered style */}
-              <div className="relative flex justify-center items-end h-full w-full mt-2">
+            <div className="relative bg-gradient-to-br from-white/70 to-[#ecdfcb] rounded-3xl p-0 shadow-xl shadow-black/10 border border-[#be521c]/10 flex flex-col items-center min-h-[320px] w-full max-w-md overflow-hidden">
+
+              {/* Yeni görsel alanı */}
+              <div className="relative w-full h-[260px] md:h-[340px] overflow-hidden rounded-3xl">
                 <img
-                  src="/images/pawn.png"
-                  alt="Pawn"
-                  className="h-[140px] md:h-[170px] absolute left-2 bottom-2 z-10 opacity-80"
-                  style={{ filter: "drop-shadow(0 2px 8px #be521c22)" }}
+                  src="https://zkxjtrhkommpfurpizrn.supabase.co/storage/v1/object/public/chessimages/kidsplaying-chess-low.jpg"
+                  alt="Çocuklar satranç oynuyor"
+                  className="w-full h-full object-cover object-center brightness-95"
+                  style={{
+                    boxShadow: "0 8px 40px 0 #be521c1e, 0 1.5px 10px #ffd70020"
+                  }}
                 />
-                <img
-                  src="/images/king.png"
-                  alt="King"
-                  className="h-[170px] md:h-[210px] mx-auto z-20 relative"
-                  style={{ filter: "drop-shadow(0 4px 14px #be521c33)" }}
-                />
-                <img
-                  src="/images/queen.png"
-                  alt="Queen"
-                  className="h-[140px] md:h-[170px] absolute right-2 bottom-2 z-10 opacity-80"
-                  style={{ filter: "drop-shadow(0 2px 8px #be521c22)" }}
-                />
+                {/* Üstte pastel gold efektli bir şerit */}
+                <div className="absolute inset-0 bg-gradient-to-t from-gold-50/55 via-transparent to-transparent pointer-events-none" />
+                {/* Sağ altta badge */}
+                <div className="absolute bottom-4 right-4 flex items-center gap-2 bg-gold-100/90 rounded-full px-4 py-1 shadow-lg shadow-gold-400/10 border border-gold-200 text-gold-800 font-semibold text-xs md:text-sm backdrop-blur-md">
+                  <svg className="w-5 h-5 mr-1 text-gold-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.973a1 1 0 00.95.69h4.176c.969 0 1.371 1.24.588 1.81l-3.382 2.457a1 1 0 00-.364 1.118l1.286 3.973c.3.921-.755 1.688-1.539 1.118l-3.382-2.457a1 1 0 00-1.175 0l-3.382 2.457c-.783.57-1.838-.197-1.539-1.118l1.286-3.973a1 1 0 00-.364-1.118L2.049 9.4c-.783-.57-.38-1.81.588-1.81h4.176a1 1 0 00.95-.69l1.286-3.973z" />
+                  </svg>
+                  İlham ve Oyun: Satrançta Birlikte Büyüyoruz!
+                </div>
               </div>
-              {/* Info tag */}
-               {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-3 mt-4">
-              <Link
-                href="/programs"
-                className="rounded-full bg-gradient-to-r from-gold-400 to-amber-500 px-7 py-3 text-center text-sm md:text-base font-bold text-black shadow-lg shadow-gold-500/15 transition hover:-translate-y-0.5 hover:shadow-gold-400/60"
-              >
-                Ders Seçenekleri
-              </Link>
-              <Link
-                href="/contact"
-                className="rounded-full border border-[#be521c]/10 px-7 py-3 text-center text-sm md:text-base font-semibold text-[#0b0b0b] bg-white/70 hover:border-gold-400 hover:text-gold-600 transition"
-              >
-                Kulübe Katıl
-              </Link>
-            </div>
               
+              {/* CTA Buttonlar */}
+              <div className="flex flex-col sm:flex-row gap-3 mt-7 mb-3">
+                <Link
+                  href="/programs"
+                  className="rounded-full bg-gradient-to-r from-gold-400 to-amber-500 px-7 py-3 text-center text-sm md:text-base font-bold text-black shadow-lg shadow-gold-500/15 transition hover:-translate-y-0.5 hover:shadow-gold-400/60"
+                >
+                  Ders Seçenekleri
+                </Link>
+                <Link
+                  href="/contact"
+                  className="rounded-full border border-[#be521c]/10 px-7 py-3 text-center text-sm md:text-base font-semibold text-[#0b0b0b] bg-white/70 hover:border-gold-400 hover:text-gold-600 transition"
+                >
+                  Kulübe Katıl
+                </Link>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* About Preview */}
-      <section className="mx-auto max-w-6xl px-4 py-16 md:px-6 md:py-24">
+      <section className="mx-auto max-w-6xl px-4 py-16 md:px-6 md:py-12">
         <div className="grid items-center gap-12 lg:grid-cols-2">
           <div className="relative aspect-[4/3] overflow-hidden rounded-3xl border border-[#0b0b0b]/5 bg-gradient-to-br from-white to-[#f4ecde] shadow-xl shadow-black/10">
             <Image
-              src="/images/image1.jpg"
+              src="https://zkxjtrhkommpfurpizrn.supabase.co/storage/v1/object/public/chessimages/homepage-img-1.jpg"
               alt="Satranç eğitimi"
               fill
               className="object-cover"
@@ -225,7 +235,7 @@ export default async function Home() {
 
       {/* Programs */}
       <section className="bg-[#f1ecdf]">
-        <div className="mx-auto max-w-6xl px-4 py-16 md:px-6 md:py-24">
+        <div className="mx-auto max-w-6xl px-4 py-16 md:px-6 md:py-12">
           <div className="flex flex-col gap-10">
             <SectionHeading
               eyebrow="Eğitim"
@@ -234,19 +244,22 @@ export default async function Home() {
             />
             {programs.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-[#4a4a4a]">Henüz program eklenmemiş.</p>
+                <p className="text-lg text-[#4a4a4a] font-medium">Henüz program eklenmemiş.</p>
               </div>
             ) : (
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {programs.map((program, index) => {
-                  // Default images for programs
+                  // Default images for programs (fallback)
                   const defaultImages = [
-                    "https://images.unsplash.com/photo-1586165368502-1bad197e6461?w=600&q=80",
-                    "https://images.unsplash.com/photo-1528819622765-d6bcf132ac31?w=600&q=80",
-                    "https://images.unsplash.com/photo-1529699211952-734e80c4d42b?w=600&q=80",
-                    "https://images.unsplash.com/photo-1606166188511-aa0b3c2c6279?w=600&q=80",
+                    "/images/program-1.png",
+                    "/images/program-2.png",
+                    "/images/program-3.png",
+                    "/images/program-4.png",
+                    "/images/program-5.png",
+                    "/images/program-6.png",
                   ];
-                  const imageUrl = defaultImages[index % defaultImages.length];
+                  // Use database imageUrl or fallback to default images
+                  const imageUrl = program.imageUrl || defaultImages[index % defaultImages.length];
                   
                   return (
                     <div
@@ -267,7 +280,7 @@ export default async function Home() {
                         {/* Level Badge on Image */}
                         {program.level && (
                           <div className="absolute top-4 right-4">
-                            <span className="inline-flex items-center rounded-full bg-gold-500/95 backdrop-blur-sm px-3 py-1 text-xs font-bold text-white shadow-lg border border-gold-300/50">
+                            <span className="inline-flex items-center rounded-full bg-gold-500/95 backdrop-blur-sm px-3 py-1.5 text-sm font-bold text-white shadow-lg border border-gold-300/50">
                               {program.level}
                             </span>
                           </div>
@@ -282,28 +295,28 @@ export default async function Home() {
                       </div>
 
                       {/* Content Section */}
-                      <div className="p-6">
-                        <h3 className="text-xl font-bold text-[#0b0b0b] mb-2 group-hover:text-gold-600 transition-colors">
+                      <div className="p-6 md:p-7">
+                        <h3 className="text-xl md:text-2xl font-bold text-[#0b0b0b] mb-3 group-hover:text-gold-600 transition-colors leading-tight">
                           {program.title}
                         </h3>
-                        <p className="text-sm text-[#4a4a4a] line-clamp-3 mb-4">
+                        <p className="text-base text-[#2a2a2a] line-clamp-3 mb-5 leading-relaxed font-normal">
                           {program.description}
                         </p>
 
                         {/* Info Badges */}
-                        <div className="flex flex-wrap gap-2 mb-4">
+                        <div className="flex flex-wrap gap-3 mb-5">
                           {program.duration && (
-                            <span className="inline-flex items-center gap-1 rounded-lg bg-gold-50 px-2.5 py-1 text-xs font-medium text-gold-700 border border-gold-200">
-                              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            <span className="inline-flex items-center gap-2 rounded-full bg-gold-50 px-4 py-2 text-sm font-semibold text-gold-800 border border-gold-200 shadow-sm">
+                              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                               </svg>
                               {program.duration}
                             </span>
                           )}
                           {program.price && (
-                            <span className="inline-flex items-center gap-1 rounded-lg bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 border border-amber-200">
-                              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800 border border-amber-200 shadow-sm">
+                              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                               </svg>
                               {program.price}
                             </span>
@@ -312,15 +325,15 @@ export default async function Home() {
 
                         {/* Structure - All Items */}
                         {program.structure && program.structure.length > 0 && (
-                          <div className="mb-4 pb-4 border-b border-[#0b0b0b]/10">
-                            <p className="text-xs font-semibold text-gold-600 mb-2 uppercase tracking-wide">
+                          <div className="mb-5 pb-5 border-b border-[#0b0b0b]/10">
+                            <p className="text-sm font-bold text-gold-700 mb-3 uppercase tracking-wide">
                               Program Yapısı
                             </p>
-                            <ul className="space-y-1.5">
+                            <ul className="space-y-2">
                               {program.structure.map((item, idx) => (
-                                <li key={idx} className="flex items-start gap-2 text-xs text-[#4a4a4a]">
-                                  <span className="mt-1 h-1.5 w-1.5 rounded-full bg-gold-500 flex-shrink-0" />
-                                  <span>{item}</span>
+                                <li key={idx} className="flex items-start gap-3 text-sm text-[#2a2a2a] leading-relaxed">
+                                  <span className="mt-2 h-2 w-2 rounded-full bg-gold-500 flex-shrink-0" />
+                                  <span className="flex-1">{item}</span>
                                 </li>
                               ))}
                             </ul>
@@ -351,7 +364,7 @@ export default async function Home() {
       </section>
 
       {/* Tournaments */}
-      <section className="mx-auto max-w-6xl px-4 py-16 md:px-6 md:py-24">
+      <section className="mx-auto max-w-6xl px-4 py-16 md:px-6 md:py-12">
         <div className="flex flex-col gap-8">
           <SectionHeading
             eyebrow="Takvim"
@@ -386,7 +399,7 @@ export default async function Home() {
 
       {/* Coaches */}
       <section className="bg-[#f1ecdf]">
-        <div className="mx-auto max-w-6xl px-4 py-16 md:px-6 md:py-24">
+        <div className="mx-auto max-w-6xl px-4 py-16 md:px-6 md:py-12">
           <div className="flex flex-col gap-10">
             <SectionHeading
               eyebrow="Ekip"

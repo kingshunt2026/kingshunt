@@ -9,6 +9,7 @@ const programSchema = z.object({
   level: z.string().optional(),
   duration: z.string().optional(),
   price: z.string().optional(),
+  imageUrl: z.string().url().optional().or(z.literal("")),
   structure: z.array(z.string()).optional(),
   goals: z.array(z.string()).optional(),
 })
@@ -97,7 +98,10 @@ export async function PUT(
 
     const program = await prisma.program.update({
       where: { id },
-      data: validatedData,
+      data: {
+        ...validatedData,
+        imageUrl: validatedData.imageUrl || null,
+      },
     })
 
     return NextResponse.json(program)

@@ -12,6 +12,7 @@ interface Program {
   level: string | null;
   duration: string | null;
   price: string | null;
+  imageUrl: string | null;
   structure: string[];
   goals: string[];
 }
@@ -34,7 +35,17 @@ async function getPrograms(): Promise<Program[]> {
     const programs = await prisma.program.findMany({
       orderBy: { createdAt: "desc" },
     });
-    return programs;
+    return programs.map(p => ({
+      id: p.id,
+      title: p.title,
+      description: p.description,
+      level: p.level,
+      duration: p.duration,
+      price: p.price,
+      imageUrl: (p as any).imageUrl || null,
+      structure: p.structure,
+      goals: p.goals,
+    })) as Program[];
   } catch (error) {
     console.error("Error fetching programs:", error);
     return [];
@@ -60,13 +71,13 @@ export default async function ProgramsPage() {
       <section className="mx-auto w-full px-4 py-16 md:px-6 md:py-12">
         {programs.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-[#4a4a4a]">Henüz program eklenmemiş.</p>
+            <p className="text-lg text-[#4a4a4a] font-medium">Henüz program eklenmemiş.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
             {programs.map((program, index) => {
-              // Use default image or a placeholder
-              const imageUrl = defaultImages[index % defaultImages.length];
+              // Use database imageUrl or fallback to default images
+              const imageUrl = program.imageUrl || defaultImages[index % defaultImages.length];
               
               return (
                 <div
@@ -81,40 +92,57 @@ export default async function ProgramsPage() {
                       className="object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent" />
-                    {program.price && (
-                      <div className="absolute top-4 right-4 rounded-full border border-white/30 bg-white/80 px-4 py-1.5 text-xs font-semibold text-[#0b0b0b] shadow-sm backdrop-blur-md">
-                        {program.price}
-                      </div>
-                    )}
                     <div className="absolute bottom-4 left-4 right-4">
-                      <p className="text-xs uppercase tracking-[0.15em] text-gold-300 font-medium">
+                      <p className="text-sm uppercase tracking-[0.15em] text-gold-300 font-semibold">
                         {program.level ? program.level : "Program"}
                       </p>
-                      <h2 className="text-xl font-bold text-white mt-1.5 line-clamp-2">
+                      <h2 className="text-2xl md:text-3xl font-bold text-white mt-2 line-clamp-2 leading-tight drop-shadow-lg">
                         {program.title}
                       </h2>
                     </div>
                   </div>
-                  <div className="p-6 flex flex-col flex-1">
-                    <p className="text-sm text-[#4a4a4a] mb-4 line-clamp-3 flex-1">
+                  <div className="p-6 md:p-8 flex flex-col flex-1">
+                    <p className="text-base md:text-lg text-[#2a2a2a] mb-5 line-clamp-3 flex-1 leading-relaxed font-normal">
                       {program.description}
                     </p>
+                    
+                    {(program.duration || program.price) && (
+                      <div className="flex flex-wrap gap-3 mb-5">
+                        {program.duration && (
+                          <div className="inline-flex items-center gap-2 rounded-full border border-gold-400/50 bg-gold-500/15 px-4 py-2 text-sm font-semibold text-gold-800 shadow-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="h-4 w-4">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                            </svg>
+                            {program.duration}
+                          </div>
+                        )}
+                        {program.price && (
+                          <div className="inline-flex items-center gap-2 rounded-full border border-gold-400/50 bg-gold-500/15 px-4 py-2 text-sm font-semibold text-gold-800 shadow-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="h-4 w-4">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                            </svg>
+                            {program.price}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
                     {(program.structure.length > 0 || program.goals.length > 0) && (
-                      <div className="mt-auto space-y-4">
+                      <div className="mt-auto space-y-5">
                         {program.structure.length > 0 && (
-                          <div className="rounded-xl border border-[#0b0b0b]/5 bg-[#f7f4ec] p-4">
-                            <p className="text-xs font-semibold text-gold-700 mb-2">
+                          <div className="rounded-xl border border-[#0b0b0b]/5 bg-[#f7f4ec] p-5">
+                            <p className="text-sm font-bold text-gold-700 mb-3 uppercase tracking-wide">
                               Haftalık Yapı
                             </p>
-                            <ul className="space-y-1.5 text-xs text-[#4a4a4a]">
+                            <ul className="space-y-2 text-sm text-[#2a2a2a] leading-relaxed">
                               {program.structure.slice(0, 3).map((item, idx) => (
-                                <li key={idx} className="flex items-start gap-2">
-                                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-gold-500 flex-shrink-0" />
-                                  <span className="line-clamp-1">{item}</span>
+                                <li key={idx} className="flex items-start gap-3">
+                                  <span className="mt-2 h-2 w-2 rounded-full bg-gold-500 flex-shrink-0" />
+                                  <span className="line-clamp-2 flex-1">{item}</span>
                                 </li>
                               ))}
                               {program.structure.length > 3 && (
-                                <li className="text-xs text-gold-600 font-medium pl-3.5">
+                                <li className="text-sm text-gold-600 font-semibold pl-5">
                                   +{program.structure.length - 3} daha fazla
                                 </li>
                               )}
@@ -123,17 +151,17 @@ export default async function ProgramsPage() {
                         )}
 
                         {program.goals.length > 0 && (
-                          <div className="rounded-xl border border-[#0b0b0b]/5 bg-[#f7f4ec] p-4">
-                            <p className="text-xs font-semibold text-gold-700 mb-2">Hedefler</p>
-                            <ul className="space-y-1.5 text-xs text-[#4a4a4a]">
+                          <div className="rounded-xl border border-[#0b0b0b]/5 bg-[#f7f4ec] p-5">
+                            <p className="text-sm font-bold text-gold-700 mb-3 uppercase tracking-wide">Hedefler</p>
+                            <ul className="space-y-2 text-sm text-[#2a2a2a] leading-relaxed">
                               {program.goals.slice(0, 3).map((item, idx) => (
-                                <li key={idx} className="flex items-start gap-2">
-                                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-gold-500 flex-shrink-0" />
-                                  <span className="line-clamp-1">{item}</span>
+                                <li key={idx} className="flex items-start gap-3">
+                                  <span className="mt-2 h-2 w-2 rounded-full bg-gold-500 flex-shrink-0" />
+                                  <span className="line-clamp-2 flex-1">{item}</span>
                                 </li>
                               ))}
                               {program.goals.length > 3 && (
-                                <li className="text-xs text-gold-600 font-medium pl-3.5">
+                                <li className="text-sm text-gold-600 font-semibold pl-5">
                                   +{program.goals.length - 3} daha fazla
                                 </li>
                               )}

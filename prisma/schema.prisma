@@ -43,6 +43,7 @@ model Program {
   level       String?
   duration    String?
   price       String?
+  imageUrl    String?
   structure   String[] @default([])
   goals       String[] @default([])
   createdAt   DateTime @default(now())
